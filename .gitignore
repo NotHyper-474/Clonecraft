@@ -47,7 +47,7 @@ ExportedObj/
 *.opendb
 *.VC.db
 .vsconfig
-UpgradeLog.htm
+UpgradeLog[123456789].htm
 
 # Unity3D generated meta files
 *.pidb.meta
