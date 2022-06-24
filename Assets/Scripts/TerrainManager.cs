@@ -11,34 +11,45 @@ namespace Minecraft
 	public class TerrainManager : MonoBehaviour
 	{
 		public string seed;
-		public Transform player;
+		public UnityEngine.ThreadPriority chunkGeneratePriority = UnityEngine.ThreadPriority.Low;
+		public GameObject playerPrefab;
 		public Material defaultMaterial;
-		public List<TerrainChunk> chunks;
 		public TerrainChunksPool chunksPool;
 		public Vector3Int chunkSize;
 		public uint renderDistance = 12U;
 
 		private FastNoise noise;
+		private Transform player;
 		private uint prevRenderDistance;
 		public float _RayOffset = 0.01f;
 		private Vector3Int playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
+		private bool playerSpawned = false;
 		private readonly HashSet<Vector3Int> currentChunks = new HashSet<Vector3Int>();
 		private bool updatingTerrain = false;
 		private bool forceUpdate = true;
 		private ChunkMeshBuilder builder;
 
+		private void Awake()
+		{
+			if (!int.TryParse(seed, out int numSeed))
+				numSeed = seed.GetHashCode();
+			else numSeed = 1;
+
+			noise = new FastNoise(numSeed);
+			noise.SetNoiseType(FastNoise.NoiseType.Simplex);
+			Debug.Log("Actual seed is " + noise.GetSeed());
+
+			builder = new ChunkMeshBuilder(this);
+			player = playerPrefab.transform;
+			playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
+		}
+
 		// Start is called before the first frame update
 		private async void Start()
 		{
-			int numSeed = 1;
-			if (!int.TryParse(seed, out numSeed))
-				numSeed = seed.GetHashCode();
-			noise = new FastNoise(numSeed);
-			Debug.Log("Actual seed is " + noise.GetSeed());
-
-			
 			/*TerrainChunk chunk = TerrainChunk.SetupAndInstantiate(Vector3Int.zero, chunkSize, transform);
 			TerrainChunk chunkGreedy = TerrainChunk.SetupAndInstantiate(Vector3Int.right, chunkSize, transform);
+			List<TerrainChunk> chunks = new List<TerrainChunk>();
 			chunks.Add(chunk);
 			chunks.Add(chunkGreedy);
 
@@ -60,12 +71,9 @@ namespace Minecraft
 				Mesh chunkMesh = builder.JobsBuildChunk(chunks[i]);
 				chunks[i].SetMesh(chunkMesh, defaultMaterial);
 			}*/
-			builder = new ChunkMeshBuilder(this);
-			noise.SetNoiseType(FastNoise.NoiseType.Simplex);
+			
 			forceUpdate = true;
-			playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
 			await UpdateTerrain().ContinueWith(_ => Debug.Log("First load finished"));
-			playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
 		}
 
 		private void OnDrawGizmos()
@@ -94,7 +102,7 @@ namespace Minecraft
 				prevRenderDistance = renderDistance;
 			}
 
-			Application.backgroundLoadingPriority = UnityEngine.ThreadPriority.Low;
+			Application.backgroundLoadingPriority = chunkGeneratePriority;
 			await UpdateTerrain();
 			Application.backgroundLoadingPriority = UnityEngine.ThreadPriority.Normal;
 		}
@@ -111,13 +119,13 @@ namespace Minecraft
 					{
 						for (int x = playerChunk.x - (int)renderDistance; x <= playerChunk.x + (int)renderDistance; x++)
 						{
-							for (int y = -(int)renderDistance; y <= playerChunk.y + renderDistance; y++)
-							{
+							// for (int y = -(int)renderDistance; y <= playerChunk.y + renderDistance; y++)
+							// {
 								for (int z = playerChunk.z - (int)renderDistance; z <= playerChunk.z + (int)renderDistance; z++)
 								{
-									yield return new Vector3Int(x, y, z);
+									yield return new Vector3Int(x, 0, z);
 								}
-							}
+							// }
 						}
 					}
 					var newCurrentChunks = ChunksAround().Select(i => new Vector3Int(i.x, i.y, i.z));
@@ -216,7 +224,10 @@ namespace Minecraft
 			{
 				block = GetBlockAt(pointOnTerrain.Value, out TerrainChunk chunk);
 
-				SetBlockTypeAt(chunk, block.Value.index, BlockType.Air);
+				Debug.Log(block.Value.index);
+				Debug.Log("LocalPos: " + MMMath.FloorToInt3D(pointOnTerrain.Value - (chunk.index * chunk.Size) + Vector3.one * 0.5f));
+				var absIdx = new Vector3Int(Mathf.Abs(block.Value.index.x), Mathf.Abs(block.Value.index.y), Mathf.Abs(block.Value.index.z));
+				SetBlockTypeAt(chunk, absIdx, BlockType.Air);
 			}
 
 			return block;

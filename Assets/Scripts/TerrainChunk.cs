@@ -11,11 +11,12 @@ namespace Minecraft
 		public TerrainBlock[] blocks { get; private set; }
 
 		public Vector3Int Size { get; private set; }
-		private Vector3Int firstBlockGlobalIndex;
 
 		public MeshFilter meshFilter { get; protected set; }
 		public MeshCollider meshCollider { get; protected set; }
 		public MeshRenderer meshRenderer { get; protected set; }
+
+		public static int mem;
 
 		private void Awake()
 		{
@@ -23,11 +24,6 @@ namespace Minecraft
 			meshCollider = GetComponent<MeshCollider>();
 			meshRenderer = GetComponent<MeshRenderer>();
 		}
-
-		// Doesn't takes into account unused blocks
-		//public readonly Vector3Int MinBlockIndex = Vector3Int.one;
-
-		//public Vector3Int MaxBlockIndex => new Vector3Int(blocks.GetLength(0) - 1, blocks.GetLength(1) - 1, blocks.GetLength(2) - 1);
 
 		public void Setup(Vector3Int globalIndex, Vector3Int chunkSize, bool fillEmpty = true)
 		{
@@ -39,10 +35,12 @@ namespace Minecraft
 			for (int i = 0; i < blocks.Length; i++)
 			{
 				var blockIndex = MMMath.To3D(i, Size.x, Size.y);
+				if (mem < 2)
+					Debug.Log(blockIndex);
 				blocks[i] = new TerrainBlock(BlockType.Air, blockIndex, index + blockIndex, 0);
 			}
-
-			firstBlockGlobalIndex = index * Size - Vector3Int.one;
+			mem++;
+			//firstBlockGlobalIndex = index * Size - Vector3Int.one;
 		}
 
 		[Obsolete()]

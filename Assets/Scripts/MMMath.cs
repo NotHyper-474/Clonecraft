@@ -27,11 +27,8 @@ public static class MMMath
 	/// <returns></returns>
 	public static Vector3Int To3D(int index, int xMax, int yMax)
 	{
-		int z = index / (xMax * yMax);
-		int idx = index - (z * xMax * yMax);
-		int y = idx / xMax;
-		int x = idx % xMax;
-		return new Vector3Int(x, y, z);
+		var td = To3D((long)index, xMax, yMax);
+		return new Vector3Int(td.x, td.y, td.z);
 	}
 
 	public static int3 To3D(long index, int xMax, int yMax)
