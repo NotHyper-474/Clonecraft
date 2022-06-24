@@ -11,41 +11,41 @@ namespace Minecraft
 {
 	// https://www.jacksondunstan.com/articles/5397
 	public class ManagedObjectWorld
-    {
+	{
 		private int m_NextId;
 		private readonly Dictionary<int, object> m_Objects;
 
 		public ManagedObjectWorld(int initialCapacity = 1000)
-        {
+		{
 			m_NextId = 1;
 			m_Objects = new Dictionary<int, object>(initialCapacity);
-        }
+		}
 
 		public ManagedObjectReference<T> Add<T>(T obj) where T : class
-        {
+		{
 			int id = m_NextId;
 			m_NextId++;
 			m_Objects[id] = obj;
 			return new ManagedObjectReference<T>(id);
-        }
+		}
 
 		public T Get<T>(ManagedObjectReference<T> objRef) where T : class
-        {
+		{
 			return (T)m_Objects[objRef.Id];
-        }
+		}
 
 		public void Remove<T>(ManagedObjectReference<T> objRef) where T : class
-        {
+		{
 			m_Objects.Remove(objRef.Id);
-        }
-    }
+		}
+	}
 
 	public struct ManagedObjectReference<T> where T : class
-    {
+	{
 		public readonly int Id;
 
 		public ManagedObjectReference(int id) => Id = id;
-    }
+	}
 
 	[BurstCompile]
 	public struct TerrainChunkMeshBuildJob : IJob
@@ -54,18 +54,19 @@ namespace Minecraft
 		public NativeList<int> triangles;
 		public NativeList<Vector3> uvs; //TODO: UV
 
-		public NativeArray<TerrainBlock> blocks;
-		public ManagedObjectReference<Material> materialData;
-		public NativeArray<float> maskedBlockTypes;
+		public NativeArray<VoxelFace> voxelFaces;
 		public int3 chunkSize;
 
 		private const int SOUTH = 0, NORTH = 1,
 				EAST = 2, WEST = 3, TOP = 4, BOTTOM = 5;
 
+
+		/// <summary>
+		/// * Mostly based on a Greedy Meshing algorithm by Mikola Lysenko and code based on Cleo McCoy (formely Rob O'Leary)
+		/// </summary>
 		public void Execute()
 		{
-			// Mostly based on a Greedy Me;shing algorithm by Mikola Lysenko and code based on Cleo McCoy (formely Rob O'Leary)
-			var emptyBlock = new TerrainBlock(BlockType.Air, Vector3Int.zero, Vector3Int.zero, 0);
+			VoxelFace emptyFace = new VoxelFace();
 
 			for (bool backFace = true, b = false; b != backFace; backFace = backFace && b, b = !b)
 			{
@@ -73,11 +74,12 @@ namespace Minecraft
 				for (int d = 0; d < 3; d++)
 				{
 					int i, j, k, l, w, h;
-					int u = (d + 1) % 3; // 
+					int u = (d + 1) % 3; // Which axis of the slice to cycle through
 					int v = (d + 2) % 3; // 
 					var x = new int3();
 					var q = new int3();
 					int side = 0;
+					var mask = new NativeArray<VoxelFace>(chunkSize[u] * chunkSize[v], Allocator.Temp);
 
 					switch (d)
 					{
@@ -92,7 +94,6 @@ namespace Minecraft
 							break;
 					}
 
-					var mask = new NativeArray<TerrainBlock>(chunkSize[u] * chunkSize[v], Allocator.Temp);
 					q[d] = 1;
 
 					// Check each slice of the chunk one at a time
@@ -107,19 +108,14 @@ namespace Minecraft
 								// q determines the direction (X, Y or Z) that we are searching
 								// m.IsBlockAt(x,y,z) takes chunk positions and returns true if a block exists there
 
-								// Apparently this avoids blocks at chunk borders being ignored
-								emptyBlock.index = MMMath.FloorToInt3D(x[0] / chunkSize.x, x[1] / chunkSize.y, x[2] / chunkSize.z);
-								emptyBlock.globalIndex = MMMath.FloorToInt3D(x[0], x[1], x[2]);
-								TerrainBlock blockCurrent = (x[d] >= 0) ? blocks[MMMath.FlattenIndex(x[0], x[1], x[2], chunkSize.x, chunkSize.y)] : emptyBlock;
-								TerrainBlock blockCompare = (x[d] < chunkSize[d] - 1) ? blocks[MMMath.FlattenIndex(x[0] + q[0], x[1] + q[1], x[2] + q[2], chunkSize.x, chunkSize.y)] : emptyBlock;
-								//manager.GetBlockTypeAt(chunk, (chunk.index * chunkSize) + x) : emptyBlock;
-								//manager.GetBlockTypeAt(chunk, (chunk.index * chunkSize) + x + q) : emptyBlock;
+								var faceCurrent = (x[d] >= 0) ? voxelFaces[MMMath.FlattenIndex(x[0], x[1], x[2], chunkSize.x, chunkSize.y)] : emptyFace;
+								var faceCompare = (x[d] < chunkSize[d] - 1) ? voxelFaces[MMMath.FlattenIndex(x[0] + q[0], x[1] + q[1], x[2] + q[2], chunkSize.x, chunkSize.y)] : emptyFace;
 
-								blockCurrent.metadata = (byte)(7 >> side);
-								blockCompare.metadata = (byte)(7 >> side);
+								faceCurrent.side = side;
+								faceCompare.side = side;
 
-								mask[n++] = (!blockCurrent.IsEmpty() && !blockCompare.IsEmpty() && blockCurrent.Equals(blockCompare))
-									? emptyBlock : backFace ? blockCompare : blockCurrent;
+								mask[n++] = (!faceCurrent.IsEmpty() && !faceCompare.IsEmpty() && faceCurrent.Equals(faceCompare))
+									? emptyFace : backFace ? faceCompare : faceCurrent;
 							}
 						}
 
@@ -128,7 +124,7 @@ namespace Minecraft
 						n = 0;
 
 						// Generate a mesh from the mask using lexicographic ordering,      
-						//   by looping over each block in this slice of the chunk
+						// by looping over each face in this slice of the chunk
 						for (j = 0; j < chunkSize[v]; j++)
 						{
 							for (i = 0; i < chunkSize[u];)
@@ -137,7 +133,7 @@ namespace Minecraft
 								{
 									// Compute the width of this quad and store it in w                        
 									//   This is done by searching along the current axis until mask[n + w] is false
-									for (w = 1; i + w < chunkSize[u] && !mask[n + w].IsEmpty() && mask[n+w].metadata == mask[n].metadata; w++) { }
+									for (w = 1; i + w < chunkSize[u] && mask[n + w].Equals(mask[n]); w++) { }
 
 									// Compute the height of this quad and store it in h                        
 									//   This is done by checking if every block next to this row (range 0 to w) is also part of the mask.
@@ -164,32 +160,34 @@ namespace Minecraft
 									x[u] = i;
 									x[v] = j;
 
-									// du and dv determine the size and orientation of this face
-									var du = new int3();
-									du[u] = w;
+									if (true)//!mask[n].transparent)
+									{
+										// du and dv determine the size and orientation of this face
+										var du = new int3();
+										du[u] = w;
 
-									var dv = new int3();
-									dv[v] = h;
+										var dv = new int3();
+										dv[v] = h;
 
-									var blockMinVertex = new float3(1f, 1f, 1f) * -0.5f;
+										var blockMinVertex = new float3(1f, 1f, 1f) * -0.5f;
 
-									//if (d != 0 && (i != 0 || i != chunkSize[u]))
-									CreateQuad(
-										blockMinVertex + x,
-										blockMinVertex + x + du,
-										blockMinVertex + x + du + dv,
-										blockMinVertex + x + dv,
-										w,
-										h,
-										backFace,
-										mask[n],
-										side
-										);
+										CreateQuad(
+											blockMinVertex + x,
+											blockMinVertex + x + du,
+											blockMinVertex + x + du + dv,
+											blockMinVertex + x + dv,
+											w,
+											h,
+											backFace,
+											mask[n],
+											side
+											);
+									}
 
 									// Clear this part of the mask, so we don't add duplicate faces
 									for (l = 0; l < h; ++l)
 										for (k = 0; k < w; ++k)
-											mask[n + k + l * chunkSize[u]] = emptyBlock;
+											mask[n + k + l * chunkSize[u]] = emptyFace;
 
 									// Increment counters and continue
 									i += w;
@@ -206,6 +204,7 @@ namespace Minecraft
 				}
 			}
 		}
+
 		internal NativeArray<float3> GetUVCoordinates(int uOffset, int vOffset)
 		{
 			const int textureSize = 128;
@@ -231,7 +230,7 @@ namespace Minecraft
 				float width,
 				float height,
 				bool backFace,
-				TerrainBlock mask,
+				VoxelFace mask,
 				int side
 				)
 		{
@@ -267,12 +266,12 @@ namespace Minecraft
 
 			//float[] types = new float[mask.Length];
 			/*maskedBlockTypes = new NativeArray<float>(mask.Length, Allocator.Temp);
-            for (int i = 0; i < mask.Length; i++)
-            {
+			for (int i = 0; i < mask.Length; i++)
+			{
 				maskedBlockTypes[i] = (int)mask[i].type;
-            }*/
+			}*/
 			//Debug.Log($"Side: {side}; Block: {(mask[0].type)}");
-			AddUVForSide(side, mask.type);
+			AddUVForSide(side, (BlockType)mask.type);
 		}
 
 		public void AddUVForSide(int side, BlockType block)
