@@ -58,7 +58,7 @@ namespace Minecraft
 							manager.AddBlock(cRay, BlockType.Grass);
 						}
 					}
-					else if (Input.GetMouseButtonDown(2))
+					else if (Input.GetMouseButtonDown(2) || Input.GetKeyDown(KeyCode.Alpha3))
 					{
 						if (!blockBounds.Intersects(playerController.Controller.bounds))
 						{
