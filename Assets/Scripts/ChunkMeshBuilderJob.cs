@@ -9,44 +9,6 @@ using Unity.Burst;
 
 namespace Minecraft
 {
-	// https://www.jacksondunstan.com/articles/5397
-	public class ManagedObjectWorld
-	{
-		private int m_NextId;
-		private readonly Dictionary<int, object> m_Objects;
-
-		public ManagedObjectWorld(int initialCapacity = 1000)
-		{
-			m_NextId = 1;
-			m_Objects = new Dictionary<int, object>(initialCapacity);
-		}
-
-		public ManagedObjectReference<T> Add<T>(T obj) where T : class
-		{
-			int id = m_NextId;
-			m_NextId++;
-			m_Objects[id] = obj;
-			return new ManagedObjectReference<T>(id);
-		}
-
-		public T Get<T>(ManagedObjectReference<T> objRef) where T : class
-		{
-			return (T)m_Objects[objRef.Id];
-		}
-
-		public void Remove<T>(ManagedObjectReference<T> objRef) where T : class
-		{
-			m_Objects.Remove(objRef.Id);
-		}
-	}
-
-	public struct ManagedObjectReference<T> where T : class
-	{
-		public readonly int Id;
-
-		public ManagedObjectReference(int id) => Id = id;
-	}
-
 	[BurstCompile]
 	public struct TerrainChunkMeshBuildJob : IJob
 	{
@@ -60,22 +22,29 @@ namespace Minecraft
 		private const int SOUTH = 0, NORTH = 1,
 				EAST = 2, WEST = 3, TOP = 4, BOTTOM = 5;
 
+		internal VoxelFace GetFace(int3 pos)
+		{
+			return voxelFaces[MMMath.FlattenIndex(pos.x, pos.y, pos.z, chunkSize.x, chunkSize.y)];
+		}
+
 
 		/// <summary>
 		/// * Mostly based on a Greedy Meshing algorithm by Mikola Lysenko and code based on Cleo McCoy (formely Rob O'Leary)
 		/// </summary>
 		public void Execute()
 		{
-			VoxelFace emptyFace = new VoxelFace();
+			VoxelFace emptyFace = new VoxelFace()
+			{
+				transparent = false
+			};
 
 			for (bool backFace = true, b = false; b != backFace; backFace = backFace && b, b = !b)
 			{
 				// Cycle through all 3 axis
 				for (int d = 0; d < 3; d++)
 				{
-					int i, j, k, l, w, h;
 					int u = (d + 1) % 3; // Which axis of the slice to cycle through
-					int v = (d + 2) % 3; // 
+					int v = (d + 2) % 3;
 					var x = new int3();
 					var q = new int3();
 					int side = 0;
@@ -108,8 +77,9 @@ namespace Minecraft
 								// q determines the direction (X, Y or Z) that we are searching
 								// m.IsBlockAt(x,y,z) takes chunk positions and returns true if a block exists there
 
-								var faceCurrent = (x[d] >= 0) ? voxelFaces[MMMath.FlattenIndex(x[0], x[1], x[2], chunkSize.x, chunkSize.y)] : emptyFace;
-								var faceCompare = (x[d] < chunkSize[d] - 1) ? voxelFaces[MMMath.FlattenIndex(x[0] + q[0], x[1] + q[1], x[2] + q[2], chunkSize.x, chunkSize.y)] : emptyFace;
+
+								var faceCurrent = (x[d] >= 0) ? GetFace(x) : emptyFace;
+								var faceCompare = (x[d] < chunkSize[d] - 1) ? GetFace(x + q) : emptyFace;
 
 								faceCurrent.side = side;
 								faceCompare.side = side;
@@ -125,15 +95,17 @@ namespace Minecraft
 
 						// Generate a mesh from the mask using lexicographic ordering,      
 						// by looping over each face in this slice of the chunk
-						for (j = 0; j < chunkSize[v]; j++)
+						for (int j = 0; j < chunkSize[v]; j++)
 						{
-							for (i = 0; i < chunkSize[u];)
+							for (int i = 0; i < chunkSize[u];)
 							{
 								if (!mask[n].IsEmpty())
 								{
 									// Compute the width of this quad and store it in w                        
 									//   This is done by searching along the current axis until mask[n + w] is false
-									for (w = 1; i + w < chunkSize[u] && mask[n + w].Equals(mask[n]); w++) { }
+									int w = 1;
+									int h = 1;
+									for (; i + w < chunkSize[u] && mask[n + w].Equals(mask[n]); w++) { }
 
 									// Compute the height of this quad and store it in h                        
 									//   This is done by checking if every block next to this row (range 0 to w) is also part of the mask.
@@ -141,13 +113,13 @@ namespace Minecraft
 									//   greedy meshing will attempt to expand this quad out to CHUNK_SIZE x 5, but will stop if it reaches a hole in the mask
 
 									var done = false;
-									for (h = 1; j + h < chunkSize[v]; h++)
+									for (; j + h < chunkSize[v]; h++)
 									{
 										// Check each block next to this quad
-										for (k = 0; k < w; ++k)
+										for (int k = 0; k < w; ++k)
 										{
-											// If there's a hole in the mask, exit
-											if (mask[n + k + h * chunkSize[u]].IsEmpty())
+											// If there's a hole in the mask or it is not equal to the next face, exit
+											if (mask[n + k + h * chunkSize[u]].IsEmpty() || !mask[n + k + h * chunkSize[u]].Equals(mask[n]))
 											{
 												done = true;
 												break;
@@ -160,7 +132,7 @@ namespace Minecraft
 									x[u] = i;
 									x[v] = j;
 
-									if (true)//!mask[n].transparent)
+									if (!mask[n].transparent)
 									{
 										// du and dv determine the size and orientation of this face
 										var du = new int3();
@@ -185,11 +157,13 @@ namespace Minecraft
 									}
 
 									// Clear this part of the mask, so we don't add duplicate faces
-									for (l = 0; l < h; ++l)
-										for (k = 0; k < w; ++k)
+									for (int l = 0; l < h; ++l)
+										for (int k = 0; k < w; ++k)
+										{
 											mask[n + k + l * chunkSize[u]] = emptyFace;
+										}
 
-									// Increment counters and continue
+									// Increment counters by width and height of the quad and continue
 									i += w;
 									n += w;
 								}
