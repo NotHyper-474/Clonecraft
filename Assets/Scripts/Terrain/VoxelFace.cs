@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Minecraft
 {
-	[System.Flags]
+	[Flags]
 	public enum VoxelSides
 	{
 		None,
