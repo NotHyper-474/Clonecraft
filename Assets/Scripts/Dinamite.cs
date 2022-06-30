@@ -8,24 +8,33 @@ namespace Minecraft
 	{
 		public TerrainManager manager;
 
+		private bool triggered;
+
 		private void Start()
 		{
 			manager = FindObjectOfType<TerrainManager>();
 		}
 
-        private void OnCollisionEnter(Collision other)
+		private System.Collections.IEnumerator OnCollisionEnter(Collision other)
 		{
-			//yield return new WaitForSeconds(3f);
+			if (triggered) yield break;
+			triggered = true;
+			yield return new WaitForSeconds(3f);
+			Stack<TerrainChunk> chunksToRegenerate = new Stack<TerrainChunk>();
 			foreach (var entry in GetBlocksInSphere(transform.position, 5f))
 			{
 				TerrainChunk chunk = entry.Item1;
 				TerrainBlock block = entry.Item2;
 
 				chunk.SetBlockType(block.index, BlockType.Air);
-
-				manager.BuildMeshForChunk(chunk);
+				chunksToRegenerate.Push(chunk);
 			}
 			Destroy(gameObject);
+			while (chunksToRegenerate.Count > 0)
+			{
+				var chunk = chunksToRegenerate.Pop();
+				manager.BuildMeshForChunk(chunk);
+			}
 		}
 		
 		private IEnumerable<Tuple<TerrainChunk, TerrainBlock>> GetBlocksInSphere(Vector3 sphereCenter, float radius)
@@ -42,7 +51,7 @@ namespace Minecraft
 			{
 				for (int y = minIndex.y; y <= maxIndex.y; y++)
 				{
-					for (int z = minIndex.z; z < maxIndex.z; z++)
+					for (int z = minIndex.z; z <= maxIndex.z; z++)
 					{
 						Vector3 blockCenter = new Vector3(x, y, z);
 						float dis = Vector3.SqrMagnitude(blockCenter - sphereCenter);
