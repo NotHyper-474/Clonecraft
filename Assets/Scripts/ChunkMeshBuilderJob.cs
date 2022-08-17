@@ -25,9 +25,9 @@ namespace Minecraft
                 EAST = 2, WEST = 3, TOP = 4, BOTTOM = 5;
 
 
-        internal MaskBlock GetFace(int3 pos)
+        internal MaskBlock GetBlock(int3 pos)
         {
-            pos = (pos + chunkSize) % chunkSize;
+            // TODO: Check for blocks in neighbor chunk
             return blocks[MMMath.FlattenIndex(pos.x, pos.y, pos.z, chunkSize.x, chunkSize.y)];
         }
 
@@ -62,8 +62,8 @@ namespace Minecraft
                         for (x[u] = 0; x[u] < chunkSize[u]; ++x[u])
                         {
                             // q determines the direction (X, Y or Z) that we are searching
-                            var blockCurrent = (x[d] >= 0) ? GetFace(x) : emptyBlock;
-                            var blockCompare = (x[d] < chunkSize[d] - 1) ? GetFace(x + q) : emptyBlock;
+                            var blockCurrent = (x[d] >= 0) ? GetBlock(x) : emptyBlock;
+                            var blockCompare = (x[d] < chunkSize[d] - 1) ? GetBlock(x + q) : emptyBlock;
 
                             bool bCurrentOpaque = !blockCurrent.IsEmpty();
                             bool bCompareOpaque = !blockCompare.IsEmpty();
@@ -142,12 +142,15 @@ namespace Minecraft
                                 {
                                     case 0:
                                         side = q.x < 0 ? WEST : EAST;
+                                        backFace = q.x < 0;
                                         break;
                                     case 1:
                                         side = q.y < 0 ? BOTTOM : TOP;
+                                        backFace = q.y < 0;
                                         break;
                                     case 2:
                                         side = q.z < 0 ? SOUTH : NORTH;
+                                        backFace = q.z < 0;
                                         break;
                                 }
 
@@ -239,7 +242,7 @@ namespace Minecraft
                     case TOP:
                         w = 13;
                         // TODO: Fix sides
-                        if (normal.x == -1)
+                        if (normal.y == -1)
                             w = 12;
                         break;
                     case BOTTOM:
