@@ -10,7 +10,8 @@ namespace Minecraft
 		Air, // Or None
 		Grass,
 		Dirt,
-		Stone
+		Stone,
+		OakLog
 	}
 
 	[Serializable]
