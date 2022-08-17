@@ -3,7 +3,8 @@ My attempt of cloning Minecraft with greedy meshing using Unity.
 Minimum recommended Unity version is 2020 LTS.  
 Project version: 2021.3 LTS
 
-![clonecraft-page](https://user-images.githubusercontent.com/40342021/175710820-6d7034ea-d5dc-4de9-8591-50ea46a230f7.png)
+![clonecraft-page](https://user-images.githubusercontent.com/40342021/185242373-ff6f6ce2-c70e-4d83-b63a-85af48027552.png)
+
 ###### This image is not final and might change in the future
 
 #### Code based on:
