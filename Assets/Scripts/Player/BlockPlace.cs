@@ -8,11 +8,12 @@ namespace Minecraft
 		[SerializeField]
 		private Material material;
 		[SerializeField] private GameObject dinamitePrefab;
+		[SerializeField] private int selectedType;
+		[SerializeField] private BlockType[] types;
 
 		public TerrainManager manager;
 
 		private BlockFace? blockFace;
-		private BlockType type;
 		private PlayerFPSController playerController;
 
 		// Start is called before the first frame update
@@ -23,13 +24,21 @@ namespace Minecraft
 
 		private void OnGUI()
 		{
-			GUI.Label(new Rect(5f, 35f, 200f, 25f), "Selected BT: " + System.Enum.GetName(typeof(BlockType), type));
+			//GUI.Label(new Rect(5f, 35f, 200f, 25f), "Selected BT: " + System.Enum.GetName(typeof(BlockType), type));
 			//GUI.Label(new Rect(5f, 50f, 250f, 25f), "SBT BlockFace Position: " + type.GetValueOrDefault().globalIndex);
 		}
 
 		// Update is called once per frame
 		private void Update()
 		{
+			if (Input.GetAxisRaw("Mouse ScrollWheel") > 0f) {
+				selectedType--;
+			}
+			else if (Input.GetAxisRaw("Mouse ScrollWheel") < 0f) {
+				selectedType++;
+			}
+			selectedType = (selectedType % types.Length + types.Length) % types.Length;
+
 			blockFace = null;
 
 			Ray cRay = new Ray(transform.position, transform.forward);
@@ -39,13 +48,12 @@ namespace Minecraft
 			if (pointOnTerrain != null)
 			{
 				var block = manager.GetBlockAt(pointOnTerrain.Point);
-				if (block != null) type = block.Value.type;
 
-				if (block != null && block.Value.type != BlockType.Air)
+				if (block.type != BlockType.Air)
 				{
 					Debug.DrawLine(transform.position + Vector3.up * 0.3f, pointOnTerrain.Point, Color.green);
-					Debug.DrawLine(transform.position + Vector3.up * 0.1f, block.Value.globalIndex, new Color(1f, 0f, 0f, 0.5f));
-					Bounds blockBounds = new Bounds(block.Value.globalIndex, Vector3.one);
+					Debug.DrawLine(transform.position + Vector3.up * 0.1f, block.globalIndex, new Color(1f, 0f, 0f, 0.5f));
+					Bounds blockBounds = new Bounds(block.globalIndex, Vector3.one);
 
 					if (Input.GetMouseButtonDown(0))
 					{
@@ -55,7 +63,7 @@ namespace Minecraft
 					{
 						if(!blockBounds.Intersects(playerController.Controller.bounds))
 						{
-							manager.AddBlock(cRay, BlockType.Grass);
+							manager.AddBlock(cRay, types[selectedType]);
 						}
 					}
 					else if (Input.GetMouseButtonDown(2) || Input.GetKeyDown(KeyCode.Alpha3))
@@ -126,7 +134,7 @@ namespace Minecraft
 			material.SetPass(0);
 
 			GL.Begin(GL.QUADS);
-			GL.Color(new Color(0f, 0f, 0f, 0.2f));
+			GL.Color(new Color(1f, 1f, 1f, 0.2f));
 
 			foreach (var vertex in vertices)
 			{

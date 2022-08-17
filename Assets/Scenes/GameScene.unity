@@ -153,13 +153,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 45cee417148531f499bd91789d84bb20, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: -1
+  seed: lucky
+  terrainGenerator: {fileID: 11400000, guid: cb6e13cd898c61c428861b21e225de22, type: 2}
   chunkGeneratePriority: 4
   playerPrefab: {fileID: 1463377889}
   defaultMaterial: {fileID: 2100000, guid: 8623c0f3308c77a46ad3bd5bc748de8d, type: 2}
   chunksPool: {fileID: 190531327}
-  chunkSize: {x: 8, y: 64, z: 8}
-  renderDistance: 12
+  chunkSize: {x: 8, y: 128, z: 8}
+  renderDistance: 8
   _RayOffset: 0.01
 --- !u!4 &190531326
 Transform:
@@ -200,7 +201,7 @@ GameObject:
   - component: {fileID: 369796125}
   - component: {fileID: 369796124}
   - component: {fileID: 369796123}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -599,8 +600,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75eb11b014abfa446be4da29349318ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  material: {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
+  material: {fileID: 2100000, guid: 8b3dc35727f8b9541aeb73245f6e210e, type: 2}
   dinamitePrefab: {fileID: 1059932017721611182, guid: e2c5dacbe1e685942b9460ce341cdbb4, type: 3}
+  selectedType: 0
+  types: 01020304
   manager: {fileID: 190531325}
 --- !u!1 &1441497691
 GameObject:
@@ -647,9 +650,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ddc59ad6e60229c4eb3a3851b3b6b765, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sensitivity: 2
-  MinPitch: -90
-  MaxPitch: 90
+  m_Sensitivity: 2
+  m_MinPitch: -90
+  m_MaxPitch: 90
+  m_LockMouse: 1
 --- !u!1 &1463377889
 GameObject:
   m_ObjectHideFlags: 0
@@ -700,7 +704,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   walkSpeed: 6
   runSpeed: 9
-  jumpSpeed: 10
+  jumpSpeed: 3
 --- !u!4 &1463377892
 Transform:
   m_ObjectHideFlags: 0

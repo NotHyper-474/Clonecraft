@@ -60,9 +60,9 @@ namespace Minecraft
 						{
 							var block = manager.GetBlockAt(blockCenter, out TerrainChunk chunk);
 
-							if (block != null && !block.Value.IsEmpty())
+							if (!block.IsEmpty())
 							{
-								yield return new Tuple<TerrainChunk, TerrainBlock>(chunk, block.Value);
+								yield return new Tuple<TerrainChunk, TerrainBlock>(chunk, block);
 							}
 						}
 					}
