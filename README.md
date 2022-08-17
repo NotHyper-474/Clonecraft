@@ -14,7 +14,7 @@ Project version: 2021.3 LTS
 ### TODO list (not necessarily in order)
 - [X] Add greedy meshing
 - [ ] Fix BlockPlacer
-- [ ] Add proper texturing
+- [X] Add proper texturing
 - [ ] ~Cull chunk meshes~ Properly cull chunks
 - [ ] Add menus and etc
 - [ ] Clean code
