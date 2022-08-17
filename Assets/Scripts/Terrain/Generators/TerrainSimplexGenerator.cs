@@ -6,24 +6,9 @@ using UnityEngine;
 
 namespace Minecraft
 {
+	[CreateAssetMenu(fileName = "New TerrainSimplexGenerator", menuName = "Clonecraft/Generators/Simplex", order=1)]
 	public sealed class TerrainSimplexGenerator : TerrainGeneratorBase
 	{
-		public override void GenerateBlocksFor(TerrainChunk chunk)
-		{
-			for (int x = 0; x < chunk.Size.x; x++)
-				for (int y = 0; y < chunk.Size.y; y++)
-					for (int z = 0; z < chunk.Size.z; z++)
-					{
-						int i = MMMath.FlattenIndex(x, y, z, chunk.Size.x, chunk.Size.y);
-						var index = new Vector3Int(x, y, z);
-						var globalIndex = index + chunk.index * chunk.Size;
-						chunk.blocks[i].index = index;
-						chunk.blocks[i].globalIndex = globalIndex;
-						chunk.blocks[i].type = CalculateBlockType(chunk.Size, globalIndex);
-					}
-
-		}
-
 		// Totally not stolen from Sam Hogan (check him out he does some cool stuff)
 		public override BlockType CalculateBlockType(Vector3Int chunkSize, Vector3Int blockGlobalIndex)
 		{
