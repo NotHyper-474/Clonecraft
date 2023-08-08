@@ -14,12 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   landHeight: 4
   layers:
-  - layerYMin: 4
-    layerYMax: 4
-    blockType: 1
-  - layerYMin: 3
-    layerYMax: 1
-    blockType: 2
-  - layerYMin: 0
-    layerYMax: 0
+  - height: 1
     blockType: 3
+  - height: 4
+    blockType: 2
+  - height: 1
+    blockType: 1
