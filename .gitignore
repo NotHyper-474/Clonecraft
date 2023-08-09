@@ -49,7 +49,7 @@ ExportedObj/
 *.mdb
 *.opendb
 *.VC.db
-UpgradeLog[123456789].htm
+UpgradeLog*.htm
 
 # Unity3D generated meta files
 *.pidb.meta
@@ -74,4 +74,8 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
 UpgradeLog.htm
+
+# (Linux only) Mono crash blob files
+mono_crash.mem.*.*.blob
