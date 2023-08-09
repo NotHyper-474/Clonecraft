@@ -26,7 +26,7 @@ namespace Minecraft
 				TerrainChunk chunk = entry.Item1;
 				TerrainBlock block = entry.Item2;
 
-				chunk.SetBlockType(block.index, BlockType.Air);
+				chunk.SetBlockType(block.index, VoxelType.Air);
 				chunksToRegenerate.Push(chunk);
 			}
 			Destroy(gameObject);
@@ -34,6 +34,7 @@ namespace Minecraft
 			{
 				var chunk = chunksToRegenerate.Pop();
 				manager.BuildMeshForChunk(chunk);
+                yield return new WaitForEndOfFrame();
 			}
 		}
 		
@@ -42,8 +43,8 @@ namespace Minecraft
 			Vector3 minPoint = sphereCenter - Vector3.one * radius;
 			Vector3 maxPoint = sphereCenter + Vector3.one * radius;
 
-			Vector3Int minIndex = MMMath.FloorToInt3D(minPoint);
-			Vector3Int maxIndex = MMMath.FloorToInt3D(maxPoint);
+			Vector3Int minIndex = Vector3Int.FloorToInt(minPoint);
+			Vector3Int maxIndex = Vector3Int.FloorToInt(maxPoint);
 
 			float sphereRadius2 = radius * radius;
 

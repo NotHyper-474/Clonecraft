@@ -24,6 +24,7 @@ namespace Minecraft
 			else
 			{
 				newChunk = deactivatedChunks.Dequeue();
+				newChunk.SetMesh(null, null);
 				newChunk.gameObject.SetActive(true);
 			}
 

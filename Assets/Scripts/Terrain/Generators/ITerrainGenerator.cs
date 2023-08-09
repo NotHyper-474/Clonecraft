@@ -7,6 +7,6 @@ namespace Minecraft
 	public interface ITerrainGenerator
 	{
 		void GenerateBlocksFor(TerrainChunk chunk);
-		BlockType CalculateBlockType(Vector3Int chunkSize, Vector3Int globalIndex);
+		VoxelType CalculateBlockType(Vector3Int chunkSize, Vector3Int globalIndex);
 	}
 }

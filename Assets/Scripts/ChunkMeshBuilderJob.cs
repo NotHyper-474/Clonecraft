@@ -1,34 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Burst;
+using System.Runtime.CompilerServices;
 
 namespace Minecraft
 {
-    [BurstCompile]
+    [BurstCompile, BurstCompatible]
     public struct TerrainChunkMeshBuildJob : IJob
     {
         public NativeList<Vector3> vertices;
-        public NativeList<int> triangles;
-        public NativeList<Vector3> normals;
-        public NativeList<Vector3> uvs;
+        [WriteOnly] public NativeList<int> triangles;
+        [WriteOnly] public NativeList<Vector3> normals;
+        [WriteOnly] public NativeList<Vector3> uvs;
 
-        public NativeArray<MaskBlock> blocks;
-        public int3 chunkSize;
-        public float blockSize;
+        [ReadOnly] public NativeArray<VoxelType> voxels;
+        [ReadOnly] public NativeBitArray neighborVoxels;
+        [ReadOnly] public int3 chunkSize;
+        [ReadOnly] public float blockSize;
 
         private const int SOUTH = 0, NORTH = 1,
                 EAST = 2, WEST = 3, TOP = 4, BOTTOM = 5;
 
 
-        internal MaskBlock GetBlock(int3 pos)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal VoxelType GetVoxel(int3 pos)
         {
             // TODO: Check for blocks in neighbor chunk
-            return blocks[MMMath.FlattenIndex(pos.x, pos.y, pos.z, chunkSize.x, chunkSize.y)];
+
+            return voxels[MathUtils.To1D(pos.x, pos.y, pos.z, chunkSize.x, chunkSize.y)];
         }
 
         /// <summary>
@@ -36,9 +37,6 @@ namespace Minecraft
         /// </summary>
         public void Execute()
         {
-            MaskBlock emptyBlock = new MaskBlock();
-
-            //for (bool backFace = true, b = false; b != backFace; backFace = backFace && b, b = !b)
             // Cycle through all 3 axis
             for (int d = 0; d < 3; d++)
             {
@@ -48,7 +46,9 @@ namespace Minecraft
                 var x = new int3();
                 var q = new int3();
                 int side = 0;
-                var mask = new NativeArray<MaskBlock>(chunkSize[u] * chunkSize[v], Allocator.Temp);
+                // Ulong first bytes (0xFFFFFFFF) represent normal and the rest represent its type
+                var mask = new NativeArray<ulong>(chunkSize[u] * chunkSize[v], Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+                const ulong emptyBlock = (1 & 0x3UL) << 32;
 
                 q[d] = 1;
 
@@ -62,24 +62,31 @@ namespace Minecraft
                         for (x[u] = 0; x[u] < chunkSize[u]; ++x[u])
                         {
                             // q determines the direction (X, Y or Z) that we are searching
-                            var blockCurrent = (x[d] >= 0) ? GetBlock(x) : emptyBlock;
-                            var blockCompare = (x[d] < chunkSize[d] - 1) ? GetBlock(x + q) : emptyBlock;
+                            int min = 0;//q.y != 0 ? 0 : -1;
+                            int max = chunkSize[d]-1;//q.y != 0 ? chunkSize[d] - 1 : chunkSize[d]; 
+                            var blockCurrent = (x[d] >= min) ? GetVoxel(x) : default;
+                            var blockCompare = (x[d] < max) ? GetVoxel(x + q) : default;
 
-                            bool bCurrentOpaque = !blockCurrent.IsEmpty();
-                            bool bCompareOpaque = !blockCompare.IsEmpty();
+                            bool bCurrentOpaque = blockCurrent != default;
+                            bool bCompareOpaque = blockCompare != default;
 
                             if (bCurrentOpaque == bCompareOpaque)
                                 mask[n++] = emptyBlock;
                             else if (bCurrentOpaque)
                             {
-                                blockCurrent.normal = 1;
-                                mask[n++] = blockCurrent;
+                                // Set current block normal to 1 (represented by 2)
+                                mask[n] = 0;
+                                mask[n] |= (2 & 0x3UL) << 32;
+                                mask[n++] |= (ulong)blockCurrent & 0xFFFFFFFFUL;
+                                
                                 backFace = false;
                             }
                             else
                             {
-                                blockCompare.normal = -1;
-                                mask[n++] = blockCompare;
+                                // Set compare block normal to -1 (represented by 0)
+                                mask[n] = 0;
+                                mask[n] |= (0 & 0x3UL) << 32;
+                                mask[n++] |= (ulong)blockCompare & 0xFFFFFFFFUL;
                                 backFace = true;
                             }
                         }
@@ -95,7 +102,7 @@ namespace Minecraft
                     {
                         for (int i = 0; i < chunkSize[u];)
                         {
-                            if (!mask[n].IsEmpty() || mask[n].normal != 0)
+                            if (mask[n] != emptyBlock)
                             {
                                 // Compute the width of this quad and store it in w                        
                                 //   This is done by searching along the current axis until mask[n + w] is false
@@ -115,7 +122,7 @@ namespace Minecraft
                                     for (int k = 0; k < w; ++k)
                                     {
                                         // If there's a hole in the mask or it is not equal to the next face, exit
-                                        if (mask[n + k + h * chunkSize[u]].IsEmpty() || !mask[n + k + h * chunkSize[u]].Equals(mask[n]))
+                                        if (mask[n + k + h * chunkSize[u]] == emptyBlock || !mask[n + k + h * chunkSize[u]].Equals(mask[n]))
                                         {
                                             done = true;
                                             break;
@@ -136,21 +143,18 @@ namespace Minecraft
                                 var dv = new int3();
                                 dv[v] = h;
 
-                                var blockMinVertex = new float3(1f, 1f, 1f) * -0.5f;
+                                var blockMinVertex = new float3(-blockSize * 0.5f, -blockSize * 0.5f, -blockSize * 0.5f);
 
                                 switch (d)
                                 {
                                     case 0:
-                                        side = q.x < 0 ? WEST : EAST;
-                                        backFace = q.x < 0;
+                                        side = backFace ? WEST : EAST;
                                         break;
                                     case 1:
-                                        side = q.y < 0 ? BOTTOM : TOP;
-                                        backFace = q.y < 0;
+                                        side = q.y * (int)(mask[n] >> 32 & 0x3UL) - 1 < 0 ? BOTTOM : TOP;
                                         break;
                                     case 2:
-                                        side = q.z < 0 ? SOUTH : NORTH;
-                                        backFace = q.z < 0;
+                                        side = backFace ? SOUTH : NORTH;
                                         break;
                                 }
 
@@ -196,40 +200,41 @@ namespace Minecraft
                 float width,
                 float height,
                 Vector3 axisMask,
-                MaskBlock mask,
+                ulong mask,
                 int side
                 )
         {
+            int maskNormal = (int)(mask >> 32 & 0x3UL) - 1;
             triangles.Add(vertices.Length);
-            triangles.Add(vertices.Length + 2 + mask.normal);
-            triangles.Add(vertices.Length + 2 - mask.normal);
+            triangles.Add(vertices.Length + 2 + maskNormal);
+            triangles.Add(vertices.Length + 2 - maskNormal);
             triangles.Add(vertices.Length + 3);
-            triangles.Add(vertices.Length + 1 - mask.normal);
-            triangles.Add(vertices.Length + 1 + mask.normal);
+            triangles.Add(vertices.Length + 1 - maskNormal);
+            triangles.Add(vertices.Length + 1 + maskNormal);
 
 
             vertices.Add(bottomLeft * blockSize);
             vertices.Add(bottomRight * blockSize);
             vertices.Add(topLeft * blockSize);
             vertices.Add(topRight * blockSize);
-            Vector3 normal = axisMask * mask.normal;
+            Vector3 normal = axisMask * maskNormal;
 
             normals.Add(normal);
             normals.Add(normal);
             normals.Add(normal);
             normals.Add(normal);
 
-            AddUVForSide(height, width, side, normal, (BlockType)mask.type);
+            AddUVForSide(height, width, side, normal, (VoxelType)(mask & 0xFFFFFFFFUL));
         }
 
-        public void AddUVForSide(float width, float height, int side, Vector3 normal, BlockType block)
+        public void AddUVForSide(float width, float height, int side, Vector3 normal, VoxelType block)
         {
             int w = 0;
-            if (block == BlockType.Air)
+            if (block == VoxelType.Air)
             {
                 w = 13;
             }
-            if (block == BlockType.Grass)
+            if (block == VoxelType.Grass)
             {
                 switch (side)
                 {
@@ -241,9 +246,6 @@ namespace Minecraft
                         break;
                     case TOP:
                         w = 13;
-                        // TODO: Fix sides
-                        if (normal.y == -1)
-                            w = 12;
                         break;
                     case BOTTOM:
                         w = 12;
@@ -253,16 +255,16 @@ namespace Minecraft
                         break;
                 }
             }
-            else if (block == BlockType.Stone)
+            else if (block == VoxelType.Stone)
             {
                 w = 15;
             }
-            else if (block == BlockType.Dirt)
+            else if (block == VoxelType.Dirt)
             {
                 w = 12;
             }
-            if (block == BlockType.OakLog) {
-                if (side == TOP) w = 10;
+            if (block == VoxelType.OakLog) {
+                if (side == TOP || side == BOTTOM) w = 10;
                 else w = 14;
             }
 

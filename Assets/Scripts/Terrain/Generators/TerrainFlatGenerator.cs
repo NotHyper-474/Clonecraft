@@ -10,26 +10,22 @@ namespace Minecraft
 		[System.Serializable]
         public struct LandLayer
         {
-            public int layerYMin;
-            public int layerYMax;
-            public BlockType blockType;
+            public int height;
+            public VoxelType blockType;
         }
-
-        public int landHeight = 4;
         public LandLayer[] layers;
 
-        public override BlockType CalculateBlockType(Vector3Int chunkSize, Vector3Int globalIndex)
+        public override VoxelType CalculateBlockType(Vector3Int chunkSize, Vector3Int globalIndex)
         {
-            if (globalIndex.y > landHeight)
+            int totalHeight = 0;
+            for (int i = 0; i < layers.Length; i++)
             {
-				return BlockType.Air;
+                totalHeight += layers[i].height;
+                if (globalIndex.y < totalHeight) {
+                    return layers[i].blockType;
+                }
             }
-            for (int j = 0; j < layers.Length; j++)
-            {
-                if ((globalIndex.y - (layers[j].layerYMax - layers[j].layerYMin)) >= 0)
-                    return layers[j].blockType;
-            }
-			return BlockType.Air;
+			return VoxelType.Air;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Minecraft
 	public sealed class TerrainSimplexGenerator : TerrainGeneratorBase
 	{
 		// Totally not stolen from Sam Hogan (check him out he does some cool stuff)
-		public override BlockType CalculateBlockType(Vector3Int chunkSize, Vector3Int blockGlobalIndex)
+		public override VoxelType CalculateBlockType(Vector3Int chunkSize, Vector3Int blockGlobalIndex)
 		{
 			int x, y, z;
 			(x, y, z) = (blockGlobalIndex.x, blockGlobalIndex.y, blockGlobalIndex.z);
@@ -39,24 +39,24 @@ namespace Minecraft
 			//float cliffThing = noise.GetSimplex(x * 1f, z * 1f, y) * 10;
 			//float cliffThingMask = noise.GetSimplex(x * .4f, z * .4f) + .3f;
 
-			BlockType blockType = BlockType.Air;
+			VoxelType blockType = VoxelType.Air;
 
 			//under the surface, dirt block
 			if (y <= baseLandHeight)
 			{
-				blockType = BlockType.Dirt;
+				blockType = VoxelType.Dirt;
 
 				//just on the surface, use a grass type
 				if (y > baseLandHeight - 1 && y > /*WaterChunk.waterHeight*/ 28 - 2)
-					blockType = BlockType.Grass;
+					blockType = VoxelType.Grass;
 
 				if (y <= baseStoneHeight)
-					blockType = BlockType.Stone;
+					blockType = VoxelType.Stone;
 			}
 
 
 			if (caveNoise1 > Mathf.Max(caveMask, .2f))
-				blockType = BlockType.Air;
+				blockType = VoxelType.Air;
 
 			/*if(blockType != BlockType.Air)
 				blockType = BlockType.Stone;*/

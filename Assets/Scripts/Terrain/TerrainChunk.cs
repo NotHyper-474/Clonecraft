@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Minecraft
@@ -15,8 +13,6 @@ namespace Minecraft
 		public MeshFilter meshFilter { get; protected set; }
 		public MeshCollider meshCollider { get; protected set; }
 		public MeshRenderer meshRenderer { get; protected set; }
-
-		public static int mem;
 
 		private void Awake()
 		{
@@ -35,8 +31,8 @@ namespace Minecraft
 			// Cycle through blocks to assign them empty data
 			System.Threading.Tasks.Parallel.For(0, blocks.Length, i =>
 			{
-				var blockIndex = MMMath.To3D(i, Size.x, Size.y);
-				blocks[i] = new TerrainBlock(BlockType.Air, blockIndex, index + blockIndex, 0);
+				var blockIndex = MathUtils.To3D(i, Size.x, Size.y);
+				blocks[i] = new TerrainBlock(VoxelType.Air, blockIndex, index + blockIndex, 0);
 			});
 			//firstBlockGlobalIndex = index * Size - Vector3Int.one;
 		}
@@ -54,15 +50,18 @@ namespace Minecraft
 
 		public void SetMesh(Mesh mesh, Material material)
 		{
+			if (mesh == null)
+				meshFilter.mesh.Clear();
 			meshFilter.mesh = mesh;
+			
 			if (meshCollider != null) meshCollider.sharedMesh = mesh;
 			if (material == null) return;
 			meshRenderer.material = material;
 		}
 
-		public void SetBlockType(Vector3Int localIndex, BlockType type)
+		public void SetBlockType(Vector3Int localIndex, VoxelType type)
 		{
-			blocks[MMMath.FlattenIndex(localIndex.x, localIndex.y, localIndex.z, Size.x, Size.y)].type = type;
+			blocks[MathUtils.To1D(localIndex.x, localIndex.y, localIndex.z, Size.x, Size.y)].type = type;
 		}
 
 		public TerrainBlock GetBlock(int x, int y, int z)
@@ -73,7 +72,7 @@ namespace Minecraft
 				var ind = new Vector3Int(x, y, z);
 				return GetEmptyBlock(ind, ind * index);
 			}
-			return blocks[MMMath.FlattenIndex(x, y, z, Size.x, Size.y)];
+			return blocks[MathUtils.To1D(x, y, z, Size.x, Size.y)];
 		}
 
 		public TerrainBlock GetBlock(Vector3Int position)
@@ -83,7 +82,7 @@ namespace Minecraft
 
 		public static TerrainBlock GetEmptyBlock(Vector3Int index, Vector3Int globalIndex)
 		{
-			return new TerrainBlock(BlockType.Air, index, globalIndex, 0b0);
+			return new TerrainBlock(VoxelType.Air, index, globalIndex, 0b0);
 		}
 	}
 }

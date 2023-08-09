@@ -8,31 +8,20 @@ using UnityEngine.Jobs;
 using Unity.Mathematics;
 using Unity.Collections;
 
+using Debug = UnityEngine.Debug;
+using Unity.Jobs.LowLevel.Unsafe;
+
 namespace Minecraft
 {
     public sealed class ChunkMeshBuilder : System.IDisposable
     {
         private readonly TerrainManager manager;
         private TerrainChunkMeshBuildJob greedyJob;
+        private JobHandle jobHandle;
 
-        private readonly static Vector3Int[] voxelSideChecks =
-        {
-            new Vector3Int(-1, 0, 0),	// Left
-			new Vector3Int(1, 0, 0),	// Right
-			new Vector3Int(0, 1, 0),	// Top
-			new Vector3Int(0, -1, 0),	// Bottom
-			new Vector3Int(0, 0, 1),	// Forward
-			new Vector3Int(0, 0, -1),	// Backward
-		};
-
-        private readonly static Dictionary<Vector3Int, VoxelSides> posToSide = new Dictionary<Vector3Int, VoxelSides> {
-            { voxelSideChecks[0], VoxelSides.WEST },
-            { voxelSideChecks[1], VoxelSides.EAST },
-            { voxelSideChecks[2], VoxelSides.TOP },
-            { voxelSideChecks[3], VoxelSides.BOTTOM },
-            { voxelSideChecks[4], VoxelSides.NORTH },
-            { voxelSideChecks[5], VoxelSides.SOUTH },
-        };
+        private float avgMeshingTime;
+        private int avgMeshingCount;
+        private float lastTime;
 
         public ChunkMeshBuilder(TerrainManager manager)
         {
@@ -43,7 +32,7 @@ namespace Minecraft
                 triangles = new NativeList<int>(Allocator.Persistent),
                 normals = new NativeList<Vector3>(Allocator.Persistent),
                 uvs = new NativeList<Vector3>(Allocator.Persistent),
-                blockSize = 1f,
+                blockSize = manager.blockSize,
             };
         }
 
@@ -73,41 +62,42 @@ namespace Minecraft
         }
 #endif
 
-        private void CullVoxels(TerrainChunk chunk, out MaskBlock[] result)
+        private void ConvertVoxels(TerrainChunk chunk, ref NativeArray<VoxelType> voxelData)
         {
-            var blocks = new MaskBlock[chunk.Size.x * chunk.Size.y * chunk.Size.z];
-            for (int i = 0; i < chunk.blocks.Length; i++)
-            {
-                //var idx = MMMath.To3D(i, chunk.Size.x, chunk.Size.y);
-                if (chunk.blocks[i].IsEmpty()) continue;
-                blocks[i].type = (int)chunk.blocks[i].type;
-				blocks[i].shownSides = VoxelSides.ALL;
-                /*for (int j = 0; j < voxelSideChecks.Length; j++)
-                {
-                    if (manager.GetBlockAt(chunk.blocks[i].globalIndex + voxelSideChecks[j]).IsEmpty())
-                    {
-                        var side = posToSide[voxelSideChecks[j]];
-                        blocks[i].shownSides |= side;
-                    }
-                }*/
+            if (!voxelData.IsCreated) {
+                Debug.LogError("Voxel data array should be initalized.");
+                return;
             }
-            result = blocks;
+
+            for (int i = 0; i < voxelData.Length; i++)
+            {
+                voxelData[i] = chunk.blocks[i].type;
+            };
+
+            greedyJob.neighborVoxels = new NativeBitArray((chunk.Size.x * chunk.Size.y * 2) * chunk.Size.z, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         }
 
         public Mesh JobsBuildChunk(TerrainChunk chunk, params Vector2[] uvTest)
         {
 			Stopwatch s1 = new Stopwatch();
 			s1.Start();
-            CullVoxels(chunk, out MaskBlock[] blocks);
 			
             greedyJob.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
-            greedyJob.blocks = new NativeArray<MaskBlock>(blocks, Allocator.TempJob);
+            greedyJob.voxels = new NativeArray<VoxelType>(chunk.blocks.Length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            ConvertVoxels(chunk, ref greedyJob.voxels);
 
-            JobHandle handle = greedyJob.Schedule();
-            handle.Complete();
+            jobHandle = greedyJob.Schedule();
+            jobHandle.Complete();
             s1.Stop();
-			UnityEngine.Debug.Log("Elapsed meshing time: " + s1.Elapsed.TotalMilliseconds);
-            greedyJob.blocks.Dispose();
+            if (avgMeshingCount > 0 && lastTime <= Time.time)
+            {
+                UnityEngine.Debug.Log("Average meshing time: " + avgMeshingTime/avgMeshingCount);
+                lastTime = Time.time + 1f;
+            }
+            avgMeshingTime += (float)s1.Elapsed.TotalMilliseconds;
+            avgMeshingCount++;
+			//UnityEngine.Debug.Log($"Elapsed meshing time for {chunk.index.ToString()}: {s1.Elapsed.TotalMilliseconds}");
+            greedyJob.voxels.Dispose();
 
             return BuildMesh();
         }
@@ -116,15 +106,15 @@ namespace Minecraft
         {
             Mesh mesh = new Mesh
             {
-                // Allows bigger meshes however takes more memory and bandwidth
+                // Allows bigger meshes however takes more memory and bandwidth (also generally not necessary)
                 //indexFormat = UnityEngine.Rendering.IndexFormat.UInt32,
-                vertices = greedyJob.vertices.ToArray(),
-                triangles = greedyJob.triangles.ToArray(),
-                normals = greedyJob.normals.ToArray()
             };
-            mesh.SetUVs(0, greedyJob.uvs.ToArray());
+            mesh.SetVertices(greedyJob.vertices.AsArray());
+            mesh.SetTriangles(greedyJob.triangles.ToArray(), 0);
+            mesh.SetUVs(0, greedyJob.uvs.AsArray());
+            mesh.SetNormals(greedyJob.normals.AsArray());
             mesh.RecalculateTangents();
-            //mesh.Optimize();
+            mesh.Optimize();
 
             return mesh;
         }
@@ -141,10 +131,13 @@ namespace Minecraft
 
         public void Dispose()
         {
-            greedyJob.vertices.Dispose();
-            greedyJob.triangles.Dispose();
-            greedyJob.normals.Dispose();
-            greedyJob.uvs.Dispose();
+            // Avoid errors because of the arrays being used after disposed
+            jobHandle.Complete();
+            if (greedyJob.vertices.IsCreated) greedyJob.vertices.Dispose();
+            if (greedyJob.triangles.IsCreated) greedyJob.triangles.Dispose();
+            if (greedyJob.normals.IsCreated) greedyJob.normals.Dispose();
+            if (greedyJob.uvs.IsCreated) greedyJob.uvs.Dispose();
+            if (greedyJob.neighborVoxels.IsCreated) greedyJob.neighborVoxels.Dispose();
             System.GC.SuppressFinalize(this);
         }
     }

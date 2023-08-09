@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using Unity.Mathematics;
 
-public static class MMMath
+public static class MathUtils
 {
 	/// <summary>
 	/// Takes 3D indexes and returns a 1D index based on them
@@ -12,10 +12,21 @@ public static class MMMath
 	/// <param name="xMax"></param>
 	/// <param name="yMax"></param>
 	/// <returns>1D index calulation</returns>
-	public static int FlattenIndex(int x, int y, int z, int xMax, int yMax)
+	public static int To1D(int x, int y, int z, int xMax, int yMax)
 	{
 		//return (z * xMax * yMax) + (y * xMax) + x;
 		return x + xMax * (y + yMax * z);
+	}
+
+	/// <summary>
+	/// Takes 2D indexes and returns a 1D index based on them
+	/// </summary>
+	/// <param name="x"></param>
+	/// <param name="y"></param>
+	/// <returns>1D index calulation</returns>
+	public static int To1D(int x, int y, int width)
+	{
+		return y * width + x;
 	}
 
 	/// <summary>
@@ -27,31 +38,17 @@ public static class MMMath
 	/// <returns></returns>
 	public static Vector3Int To3D(int index, int xMax, int yMax)
 	{
-		var td = To3D((long)index, xMax, yMax);
-		return new Vector3Int(td.x, td.y, td.z);
-	}
-
-	public static int3 To3D(long index, int xMax, int yMax)
-	{
-		int z = (int)index / (xMax * yMax);
-		int idx = (int)index - (z * xMax * yMax);
+		int z = index / (xMax * yMax);
+		int idx = index - (z * xMax * yMax);
 		int y = idx / xMax;
 		int x = idx % xMax;
-		return new int3(x, y, z);
+		return new Vector3Int(x, y, z);
 	}
 
+	[System.Obsolete("Just use Vector3Int.FloorToInt instead")]
 	public static Vector3Int FloorToInt3D(Vector3 v)
 	{
 		return new Vector3Int(
-			Mathf.FloorToInt(v.x),
-			Mathf.FloorToInt(v.y),
-			Mathf.FloorToInt(v.z)
-			);
-	}
-	
-	public static T FloorToInt3D<T>(int3 v)
-	{
-		return (T)(object)new Vector3Int(
 			Mathf.FloorToInt(v.x),
 			Mathf.FloorToInt(v.y),
 			Mathf.FloorToInt(v.z)
@@ -67,6 +64,7 @@ public static class MMMath
 			);
 	}
 
+	[System.Obsolete("Just use Vector3Int.CeilToInt instead")]
 	public static Vector3Int CeilToInt3D(Vector3 v)
 	{
 		return new Vector3Int(

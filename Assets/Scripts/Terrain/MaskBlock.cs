@@ -21,14 +21,13 @@ namespace Minecraft
 	public struct MaskBlock : IEquatable<MaskBlock>
 	{
 		public int type;
-		public int normal;
-		public VoxelSides shownSides;
+		public sbyte normal;
 		
-		public bool Equals(MaskBlock other)
+		public readonly bool Equals(MaskBlock other)
 		{
 			return other.normal == normal && other.type == type;
 		}
 
-		public bool IsEmpty() => type == 0;
+		public readonly bool IsEmpty() => type == 0;
 	}
 }

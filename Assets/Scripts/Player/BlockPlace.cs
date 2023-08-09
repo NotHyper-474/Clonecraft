@@ -9,7 +9,7 @@ namespace Minecraft
 		private Material material;
 		[SerializeField] private GameObject dinamitePrefab;
 		[SerializeField] private int selectedType;
-		[SerializeField] private BlockType[] types;
+		[SerializeField] private VoxelType[] types;
 
 		public TerrainManager manager;
 
@@ -49,7 +49,7 @@ namespace Minecraft
 			{
 				var block = manager.GetBlockAt(pointOnTerrain.Point);
 
-				if (block.type != BlockType.Air)
+				if (block.type != VoxelType.Air)
 				{
 					Debug.DrawLine(transform.position + Vector3.up * 0.3f, pointOnTerrain.Point, Color.green);
 					Debug.DrawLine(transform.position + Vector3.up * 0.1f, block.globalIndex, new Color(1f, 0f, 0f, 0.5f));

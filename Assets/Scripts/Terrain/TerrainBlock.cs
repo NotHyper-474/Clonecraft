@@ -1,11 +1,9 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Minecraft
 {
-	public enum BlockType : byte
+	public enum VoxelType : byte
 	{
 		Air, // Or None
 		Grass,
@@ -17,7 +15,7 @@ namespace Minecraft
 	[Serializable]
 	public struct TerrainBlock : IEquatable<TerrainBlock>
 	{
-		public TerrainBlock(BlockType type, Vector3Int index, Vector3Int globalIndex, byte metadata)
+		public TerrainBlock(VoxelType type, Vector3Int index, Vector3Int globalIndex, byte metadata)
 		{
 			this.type = type;
 			this.index = index;
@@ -27,12 +25,12 @@ namespace Minecraft
 
 		public Vector3Int index;
 		public Vector3Int globalIndex;
-		public BlockType type;
+		public VoxelType type;
 		public byte metadata; // One byte for some info the block might need
 
-		public bool IsEmpty() => type == BlockType.Air;
+		public readonly bool IsEmpty() => type == VoxelType.Air;
 
-		public bool Equals(TerrainBlock obj)
+		public readonly bool Equals(TerrainBlock obj)
 		{
 			return obj.type == type;
 		}
