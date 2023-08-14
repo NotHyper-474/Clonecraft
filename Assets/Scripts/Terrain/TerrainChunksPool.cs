@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Minecraft
@@ -51,8 +49,8 @@ namespace Minecraft
 		{
 			foreach (var key in currentChunks)
 			{
-				if (key.Key == exceptIndex) return;
-				if(currentChunks[key.Key] == null) { currentChunks.Remove(key.Key); return; }
+				if (key.Key == exceptIndex) continue;
+				if(currentChunks[key.Key] == null) { currentChunks.Remove(key.Key); continue; }
 				Destroy(currentChunks[key.Key].gameObject);
 			}
 

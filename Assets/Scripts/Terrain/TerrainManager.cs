@@ -10,7 +10,6 @@ namespace Minecraft
 {
 	public class TerrainManager : MonoBehaviour
 	{
-		public static int ex;
 		public string seed;
 		public TerrainGeneratorBase terrainGenerator;
 		public ThreadPriority chunkGeneratePriority = ThreadPriority.Low;
@@ -55,7 +54,7 @@ namespace Minecraft
 			//BuildMeshForChunk(debugChunk);
 			TerrainChunkCulledMesher mesher = new TerrainChunkCulledMesher();
 			mesher.GenerateMeshFor(debugChunk);
-			
+
 			Destroy(debugChunk.gameObject);
 		}
 
@@ -72,8 +71,7 @@ namespace Minecraft
 			{
 				var pchunk = GetChunkIndexAt(player.position);
 				pchunk.y = 0;
-				if (pchunk != null)
-					Gizmos.DrawWireCube(pchunk * (chunkSize / 2), chunkSize);
+				Gizmos.DrawWireCube(pchunk * chunkSize + chunkSize / 2 - Vector3.one * 0.5f, chunkSize);
 			}
 		}
 
@@ -94,7 +92,7 @@ namespace Minecraft
 
 			Application.backgroundLoadingPriority = chunkGeneratePriority;
 			await UpdateTerrain();
-			Application.backgroundLoadingPriority = UnityEngine.ThreadPriority.Normal;
+			Application.backgroundLoadingPriority = ThreadPriority.Normal;
 		}
 
 		private async Task UpdateTerrain()
@@ -107,15 +105,15 @@ namespace Minecraft
 				{
 					IEnumerable<Vector3Int> ChunksAround()
 					{
-						for (int x = playerChunk.x - (int)renderDistance; x <= playerChunk.x + (int)renderDistance; x++)
+						for (int i = 1; i <= (int)renderDistance; i++)
 						{
-							// for (int y = -(int)renderDistance; y <= playerChunk.y + renderDistance; y++)
-							// {
-							for (int z = playerChunk.z - (int)renderDistance; z <= playerChunk.z + (int)renderDistance; z++)
+							for (int x = playerChunk.x - i; x <= playerChunk.x + i; x++)
 							{
-								yield return new Vector3Int(x, 0, z);
+								for (int z = playerChunk.z - i; z <= playerChunk.z + i; z++)
+								{
+									yield return new Vector3Int(x, 0, z);
+								}
 							}
-							// }
 						}
 					}
 					var newCurrentChunks = ChunksAround().Select(i => new Vector3Int(i.x, i.y, i.z));
@@ -123,21 +121,6 @@ namespace Minecraft
 					var chunksToDestroy = currentChunks.Except(newCurrentChunks);
 					Vector3Int[] chunksToCreate = newCurrentChunks.Except(currentChunks).ToArray();
 					Vector3Int aux = Vector3Int.one * int.MinValue;
-					int idx = -1;
-					for (int i = 0; i < chunksToCreate.Length; i++)
-					{
-						if (chunksToCreate[i] == new Vector3(playerChunk.x, 0f, playerChunk.z))
-						{
-							aux = chunksToCreate[i];
-							idx = i;
-							break;
-						}
-					}
-					if (idx != -1)
-					{
-						chunksToCreate[idx] = chunksToCreate[0];
-						chunksToCreate[0] = aux;
-					}
 
 					chunksPool.Deactivate(chunksToDestroy);
 
@@ -249,9 +232,8 @@ namespace Minecraft
 				chunk = chunksPool.Instantiate(chunkIndex, transform);
 				chunk.Setup(chunkIndex * chunkSize, chunkSize, false);
 				chunk.transform.position = chunkIndex * chunkSize;*/
-				//BuildMeshForChunk(chunk);
 				var blockType = VoxelType.Stone;//terrainGenerator.CalculateBlockType(chunkSize, Vector3Int.FloorToInt(worldPoint));
-				return new TerrainBlock(blockType, (Vector3Int.FloorToInt(worldPoint) - (chunkIndex * chunkSize)), Vector3Int.FloorToInt(worldPoint), 0);
+				return new TerrainBlock(blockType, (Vector3Int.FloorToInt(worldPoint) - (chunkIndex * chunkSize)), 0);
 			}
 
 			return chunk.GetBlock(
