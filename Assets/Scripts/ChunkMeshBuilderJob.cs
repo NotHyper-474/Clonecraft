@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace Minecraft
 {
-    [BurstCompile, BurstCompatible]
+    [BurstCompile, GenerateTestsForBurstCompatibility]
     public struct TerrainChunkMeshBuildJob : IJob
     {
         public NativeList<Vector3> vertices;

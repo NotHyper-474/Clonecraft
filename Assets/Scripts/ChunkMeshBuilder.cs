@@ -110,8 +110,11 @@ namespace Minecraft
                 // Allows bigger meshes however takes more memory and bandwidth (also generally not necessary)
                 //indexFormat = UnityEngine.Rendering.IndexFormat.UInt32,
             };
+            int[] managedTriangles = new int[greedyJob.triangles.Length];
+            greedyJob.triangles.AsArray().CopyTo(managedTriangles);
+
             mesh.SetVertices(greedyJob.vertices.AsArray());
-            mesh.SetTriangles(greedyJob.triangles.ToArray(), 0);
+            mesh.SetTriangles(managedTriangles, 0);
             mesh.SetUVs(0, greedyJob.uvs.AsArray());
             mesh.SetNormals(greedyJob.normals.AsArray());
             mesh.RecalculateTangents();
