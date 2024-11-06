@@ -177,7 +177,7 @@ namespace Minecraft
                                         mask[n + k + l * chunkSize[u]] = emptyBlock;
                                     }
 
-                                // Increment counters by width and width? of the quad and continue
+                                // Increment counters by width of the quad and continue
                                 i += w;
                                 n += w;
                             }
