@@ -12,7 +12,7 @@ namespace Minecraft
 
 		private void Start()
 		{
-			manager = FindObjectOfType<TerrainManager>();
+			manager = FindFirstObjectByType<TerrainManager>();
 		}
 
 		private System.Collections.IEnumerator OnCollisionEnter(Collision other)
