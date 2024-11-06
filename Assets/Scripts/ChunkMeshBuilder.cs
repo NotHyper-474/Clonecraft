@@ -65,7 +65,7 @@ namespace Minecraft
         private void ConvertVoxels(TerrainChunk chunk, ref NativeArray<VoxelType> voxelData)
         {
             if (!voxelData.IsCreated) {
-                Debug.LogError("Voxel data array should be initalized.");
+                Debug.LogError("Voxel data array should be initialized.");
                 return;
             }
 
@@ -74,7 +74,7 @@ namespace Minecraft
                 voxelData[i] = chunk.blocks[i].type;
             };
 
-            greedyJob.neighborVoxels = new NativeBitArray((chunk.Size.x * chunk.Size.y * 2) * chunk.Size.z, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            //greedyJob.neighborVoxels = new NativeBitArray(chunk.Size.x * chunk.Size.y * 2 * chunk.Size.z, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         }
 
         public Mesh JobsBuildChunk(TerrainChunk chunk, params Vector2[] uvTest)
@@ -98,6 +98,7 @@ namespace Minecraft
             avgMeshingCount++;
 			//UnityEngine.Debug.Log($"Elapsed meshing time for {chunk.index.ToString()}: {s1.Elapsed.TotalMilliseconds}");
             greedyJob.voxels.Dispose();
+            //greedyJob.neighborVoxels.Dispose();
 
             return BuildMesh();
         }
@@ -137,7 +138,7 @@ namespace Minecraft
             if (greedyJob.triangles.IsCreated) greedyJob.triangles.Dispose();
             if (greedyJob.normals.IsCreated) greedyJob.normals.Dispose();
             if (greedyJob.uvs.IsCreated) greedyJob.uvs.Dispose();
-            if (greedyJob.neighborVoxels.IsCreated) greedyJob.neighborVoxels.Dispose();
+            //if (greedyJob.neighborVoxels.IsCreated) greedyJob.neighborVoxels.Dispose();
             System.GC.SuppressFinalize(this);
         }
     }

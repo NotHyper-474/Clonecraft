@@ -16,7 +16,7 @@ namespace Minecraft
         [WriteOnly] public NativeList<Vector3> uvs;
 
         [ReadOnly] public NativeArray<VoxelType> voxels;
-        [ReadOnly] public NativeBitArray neighborVoxels;
+        //[ReadOnly] public NativeBitArray neighborVoxels;
         [ReadOnly] public int3 chunkSize;
         [ReadOnly] public float blockSize;
 
