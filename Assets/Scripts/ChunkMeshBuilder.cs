@@ -77,7 +77,7 @@ namespace Minecraft
             //greedyJob.neighborVoxels = new NativeBitArray(chunk.Size.x * chunk.Size.y * 2 * chunk.Size.z, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
         }
 
-        public Mesh JobsBuildChunk(TerrainChunk chunk, params Vector2[] uvTest)
+        public Mesh JobsBuildChunk(TerrainChunk chunk)
         {
 			Stopwatch s1 = new Stopwatch();
 			s1.Start();

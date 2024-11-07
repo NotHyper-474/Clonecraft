@@ -50,7 +50,7 @@ namespace Minecraft
 			foreach (var key in currentChunks)
 			{
 				if (key.Key == exceptIndex) continue;
-				if(currentChunks[key.Key] == null) { currentChunks.Remove(key.Key); continue; }
+				if(currentChunks[key.Key] == null) continue; 
 				Destroy(currentChunks[key.Key].gameObject);
 			}
 

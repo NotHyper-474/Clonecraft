@@ -29,6 +29,13 @@ namespace Minecraft
 		private bool forceUpdate = false;
 		private ChunkMeshBuilder builder;
 
+		private void OnEnable()
+		{
+			/* TODO: This seems to fix an error after hot-reloading but causes another?
+			 * Doesn't seem to impact anything anyway */
+			builder ??= new ChunkMeshBuilder(this);
+		}
+
 		private void OnDisable()
 		{
 			builder.Dispose();
@@ -47,6 +54,7 @@ namespace Minecraft
 			playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
 
 			// Sometimes there's an error but no exception thrown due to how Unity and Tasks work
+			// This chunk allows us to see these errors
 			TerrainChunk debugChunk = TerrainChunk.SetupAndInstantiate(Vector3Int.zero, chunkSize, transform);//chunksPool.Instantiate(Vector3Int.zero, transform);
 			debugChunk.name = "[DEBUG] CHUNK";
 			debugChunk.Setup(Vector3Int.zero, chunkSize, false);
@@ -71,7 +79,8 @@ namespace Minecraft
 			{
 				var pchunk = GetChunkIndexAt(player.position);
 				pchunk.y = 0;
-				Gizmos.DrawWireCube(pchunk * chunkSize + chunkSize / 2 - Vector3.one * 0.5f, chunkSize);
+				var scaledChunkSize = (Vector3)chunkSize * blockSize;
+				Gizmos.DrawWireCube(Vector3.Scale(pchunk, scaledChunkSize) + scaledChunkSize / 2 - 0.5f * Vector3.one, scaledChunkSize);
 			}
 		}
 
@@ -97,76 +106,75 @@ namespace Minecraft
 
 		private async Task UpdateTerrain()
 		{
-			if (!updatingTerrain)
-			{
-				var newPlayerChunk = GetChunkIndexAt(player.position);
+			if (updatingTerrain) return;
 
-				if (forceUpdate || (playerChunk - newPlayerChunk).sqrMagnitude > renderDistance / 1.5f)
+			var newPlayerChunk = GetChunkIndexAt(player.position);
+
+			if (forceUpdate || (playerChunk - newPlayerChunk).sqrMagnitude > renderDistance / 1.5f)
+			{
+				IEnumerable<Vector3Int> ChunksAround()
 				{
-					IEnumerable<Vector3Int> ChunksAround()
+					for (int i = 1; i <= (int)renderDistance; i++)
 					{
-						for (int i = 1; i <= (int)renderDistance; i++)
+						for (int x = playerChunk.x - i; x <= playerChunk.x + i; x++)
 						{
-							for (int x = playerChunk.x - i; x <= playerChunk.x + i; x++)
+							for (int z = playerChunk.z - i; z <= playerChunk.z + i; z++)
 							{
-								for (int z = playerChunk.z - i; z <= playerChunk.z + i; z++)
-								{
-									yield return new Vector3Int(x, 0, z);
-								}
+								yield return new Vector3Int(x, 0, z);
 							}
 						}
 					}
-					var newCurrentChunks = ChunksAround().Select(i => new Vector3Int(i.x, i.y, i.z));
-
-					var chunksToDestroy = currentChunks.Except(newCurrentChunks);
-					Vector3Int[] chunksToCreate = newCurrentChunks.Except(currentChunks).ToArray();
-					Vector3Int aux = Vector3Int.one * int.MinValue;
-
-					chunksPool.Deactivate(chunksToDestroy);
-
-					updatingTerrain = true;
-
-					await GenerateChunks(chunksToCreate).ContinueWith(_ =>
-					{
-						currentChunks.Clear();
-						currentChunks.UnionWith(newCurrentChunks);
-						playerChunk = newPlayerChunk;
-						updatingTerrain = false;
-						forceUpdate = false;
-					});
 				}
+				var newCurrentChunks = ChunksAround().Select(i => new Vector3Int(i.x, i.y, i.z));
+
+				var chunksToDestroy = currentChunks.Except(newCurrentChunks);
+				Vector3Int[] chunksToCreate = newCurrentChunks.Except(currentChunks).ToArray();
+				Vector3Int aux = Vector3Int.one * int.MinValue;
+
+				chunksPool.Deactivate(chunksToDestroy);
+
+				updatingTerrain = true;
+
+				await GenerateChunks(chunksToCreate).ContinueWith(_ =>
+				{
+					currentChunks.Clear();
+					currentChunks.UnionWith(newCurrentChunks);
+					playerChunk = newPlayerChunk;
+					updatingTerrain = false;
+					forceUpdate = false;
+				});
 			}
 		}
 
 		private async Task GenerateChunks(IEnumerable<Vector3Int> chunksToCreate)
 		{
-			List<TerrainChunk> chunksToMesh = new List<TerrainChunk>();
-			int j = 0;
+			/*List<TerrainChunk> chunksToMesh = new List<TerrainChunk>();
+			int j = 0;*/
 			// Pre-generate chunks first
 			foreach (var chunkIndex in chunksToCreate)
 			{
 				var newChunk = chunksPool.Instantiate(chunkIndex, transform);
 				newChunk.Setup(chunkIndex, chunkSize, false);
-				newChunk.transform.position = (newChunk.index * newChunk.Size) * Mathf.RoundToInt(blockSize);
+				newChunk.transform.position = blockSize * Vector3.Scale(newChunk.index, newChunk.Size);
 				terrainGenerator.GenerateBlocksFor(newChunk);
-				chunksToMesh.Add(newChunk);
-				j++;
+				/*chunksToMesh.Add(newChunk);
+				j++;*/
 				// Generate meshes every 4 chunks
-				if (j % 4 == 0)
+				//if (j % 4 == 0)
 				{
 					try
 					{
-						for (int i = 0; i < chunksToMesh.Count; i++)
+						//for (int i = 0; i < chunksToMesh.Count; i++)
 						{
 							builder.Clear();
-							Mesh m = builder.JobsBuildChunk(chunksToMesh[i]);
-							chunksToMesh[i].SetMesh(m, defaultMaterial);
+							Mesh m = builder.JobsBuildChunk(newChunk);
+							newChunk.SetMesh(m, defaultMaterial);
 							await Task.Yield();
 						}
-						chunksToMesh.Clear();
+						//chunksToMesh.Clear();
 						continue;
 					}
-					catch (System.Exception e)
+					catch (Exception e)
 					{
 						Debug.LogException(e);
 					}
@@ -237,7 +245,7 @@ namespace Minecraft
 			}
 
 			return chunk.GetBlock(
-				Vector3Int.FloorToInt(worldPoint - (chunk.index * chunk.Size) + Vector3.one * 0.5f)
+				Vector3Int.FloorToInt(worldPoint - (chunk.index * chunk.Size) + 0.5f * Vector3.one)
 				);
 		}
 
@@ -264,7 +272,11 @@ namespace Minecraft
 
 		private Vector3Int GetChunkIndexAt(Vector3 pointInWorld)
 		{
-			return Vector3Int.FloorToInt(new Vector3(pointInWorld.x / chunkSize.x, pointInWorld.y / chunkSize.y, pointInWorld.z / chunkSize.z) * blockSize);
+			return Vector3Int.FloorToInt(new Vector3(
+				pointInWorld.x / chunkSize.x,
+				pointInWorld.y / chunkSize.y,
+				pointInWorld.z / chunkSize.z
+			));
 		}
 	}
 }
