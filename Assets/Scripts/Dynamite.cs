@@ -4,16 +4,9 @@ using UnityEngine;
 
 namespace Minecraft
 {
-	public class Dinamite : MonoBehaviour
+	public class Dynamite : MonoBehaviour
 	{
-		public TerrainManager manager;
-
 		private bool triggered;
-
-		private void Start()
-		{
-			manager = FindFirstObjectByType<TerrainManager>();
-		}
 
 		private System.Collections.IEnumerator OnCollisionEnter(Collision other)
 		{
@@ -33,7 +26,7 @@ namespace Minecraft
 			while (chunksToRegenerate.Count > 0)
 			{
 				var chunk = chunksToRegenerate.Pop();
-				manager.BuildMeshForChunk(chunk);
+				TerrainManager.Instance.BuildMeshForChunk(chunk);
                 yield return new WaitForEndOfFrame();
 			}
 		}
@@ -59,7 +52,7 @@ namespace Minecraft
 
 						if (dis <= sphereRadius2)
 						{
-							var block = manager.GetBlockAt(blockCenter, out TerrainChunk chunk);
+							var block = TerrainManager.Instance.GetBlockAt(blockCenter, out TerrainChunk chunk);
 
 							if (!block.IsEmpty())
 							{

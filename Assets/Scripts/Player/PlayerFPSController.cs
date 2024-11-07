@@ -1,3 +1,4 @@
+using Minecraft;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
@@ -21,7 +22,7 @@ public class PlayerFPSController : MonoBehaviour
 	{
 		Controller = GetComponent<CharacterController>();
 	}
-	
+
 	void LateUpdate()
 	{
 		if (!toChunk)
@@ -33,7 +34,7 @@ public class PlayerFPSController : MonoBehaviour
 				transform.position = hit.point + Vector3.up;
 				Controller.enabled = toChunk = true;
 			}
-		}	
+		}
 	}
 
 	void Update()
@@ -51,7 +52,7 @@ public class PlayerFPSController : MonoBehaviour
 		Vector3 moveAxis = transform.right * input.x + transform.forward * input.y;
 
 		// apply gravity always, to let us track down ramps properly
-		
+
 		isGrounded = Controller.isGrounded;
 		if (isGrounded)
 			verticalVelocity = -1f;
@@ -69,17 +70,26 @@ public class PlayerFPSController : MonoBehaviour
 			verticalVelocity = Mathf.Min(verticalVelocity, 100f);
 			jump = false;
 		}
-		
+
 
 		// inject Y velocity before we use it
 		moveAxis.y = verticalVelocity;
 
 		// Auto jump
-		Ray blockCheck = new Ray(new Vector3(transform.position.x - 0.5f, transform.position.y + 0.01f, transform.position.z + 0.1f), transform.forward);
-		if (input.y > 0f && Physics.Raycast(blockCheck, 1.1f) && jumpCooldown <= 0f)
+		if (input.y > 0f && jumpCooldown <= 0f)
 		{
-			jumpCooldown = 0.5f;
-			jump = true;
+			Ray blockCheck = new Ray(new Vector3(transform.position.x - 0.5f, transform.position.y + 0.01f, transform.position.z + 0.1f), transform.forward);
+			var point = TerrainManager.Instance.RaycastTerrainMesh(blockCheck, 0.1f, 1f)?.Point;
+
+			if (point.HasValue)
+			{
+				var hasBlockOnTop = !TerrainManager.Instance.GetBlockAt(point.Value + Vector3.up * TerrainManager.Instance.blockSize).IsEmpty();
+				if (!hasBlockOnTop)
+				{
+					jumpCooldown = 0.5f;
+					jump = true;
+				}
+			}
 		}
 
 		Controller.Move(moveAxis * Time.deltaTime);

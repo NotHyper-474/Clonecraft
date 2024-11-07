@@ -10,6 +10,8 @@ namespace Minecraft
 {
 	public class TerrainManager : MonoBehaviour
 	{
+		public static TerrainManager Instance { get; private set; }
+
 		public string seed;
 		public TerrainGeneratorBase terrainGenerator;
 		public ThreadPriority chunkGeneratePriority = ThreadPriority.Low;
@@ -34,11 +36,14 @@ namespace Minecraft
 			/* TODO: This seems to fix an error after hot-reloading but causes another?
 			 * Doesn't seem to impact anything anyway */
 			builder ??= new ChunkMeshBuilder(this);
+
+			Instance = this;
 		}
 
 		private void OnDisable()
 		{
 			builder.Dispose();
+			Instance = null;
 		}
 
 		private void Awake()
