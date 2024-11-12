@@ -1,7 +1,7 @@
 # Clonecraft
 My attempt of cloning Minecraft with greedy meshing using Unity.  
-Minimum recommended Unity version is 2020 LTS.  
-Project version: 2021.3 LTS
+Minimum recommended Unity version is 6000.0 LTS.  
+Project version: 6000.0.25f1 LTS
 
 ![clonecraft-page](https://user-images.githubusercontent.com/40342021/185242373-ff6f6ce2-c70e-4d83-b63a-85af48027552.png)
 
