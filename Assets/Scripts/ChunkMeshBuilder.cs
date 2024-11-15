@@ -40,28 +40,7 @@ namespace Minecraft
         {
             Dispose();
         }
-
-#if UNITY_EDITOR
-        // TODO: Remove or move these
-        [UnityEditor.MenuItem("Jobs/LeakDetection/Off")]
-        public static void OffLeak()
-        {
-            NativeLeakDetection.Mode = NativeLeakDetectionMode.Disabled;
-        }
-
-        [UnityEditor.MenuItem("Jobs/LeakDetection/On")]
-        public static void OnLeak()
-        {
-            NativeLeakDetection.Mode = NativeLeakDetectionMode.Enabled;
-        }
-
-        [UnityEditor.MenuItem("Jobs/LeakDetection/Full Detection (Expensive)")]
-        public static void FullLeak()
-        {
-            NativeLeakDetection.Mode = NativeLeakDetectionMode.EnabledWithStackTrace;
-        }
-#endif
-
+        
         private void ConvertVoxels(TerrainChunk chunk, ref NativeArray<VoxelType> voxelData)
         {
             if (!voxelData.IsCreated) {
