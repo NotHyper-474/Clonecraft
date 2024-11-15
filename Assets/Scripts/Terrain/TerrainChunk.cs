@@ -5,7 +5,7 @@ namespace Minecraft
 {
 	public class TerrainChunk : MonoBehaviour
 	{
-		public Vector3Int index { get; private set; }
+		public Vector3Int index { get => _chunkIndex; private set => _chunkIndex = value; }
 		public TerrainBlock[] blocks { get; private set; }
 
 		public Vector3Int Size { get; private set; }
@@ -13,6 +13,9 @@ namespace Minecraft
 		public MeshFilter meshFilter { get; protected set; }
 		public MeshCollider meshCollider { get; protected set; }
 		public MeshRenderer meshRenderer { get; protected set; }
+
+		[SerializeField]
+		private Vector3Int _chunkIndex;
 
 		private void Awake()
 		{
@@ -67,12 +70,10 @@ namespace Minecraft
 		public TerrainBlock GetBlock(int x, int y, int z)
 		{
 			//Debug.Log("true at " + new Vector3Int(x, y, z));
-			if (x < 0 || y < 0 || z < 0 || x >= Size.x || y >= Size.y || z >= Size.z)
-			{
-				var ind = new Vector3Int(x, y, z);
-				return GetEmptyBlock(ind, ind * index);
-			}
-			return blocks[MathUtils.To1D(x, y, z, Size.x, Size.y)];
+			if (x >= 0 && y >= 0 && z >= 0 && x < Size.x && y < Size.y && z < Size.z)
+				return blocks[MathUtils.To1D(x, y, z, Size.x, Size.y)];
+			var ind = new Vector3Int(x, y, z);
+			return GetEmptyBlock(ind, ind * index);
 		}
 
 		public TerrainBlock GetBlock(Vector3Int position)

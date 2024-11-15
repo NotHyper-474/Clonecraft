@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using Minecraft;
 
 [CustomEditor(typeof(Minecraft.TerrainChunk))]
 public class ChunkIndexEditor : Editor
@@ -13,7 +14,7 @@ public class ChunkIndexEditor : Editor
     private void OnEnable()
     {
         _rootElement = new VisualElement();
-        _treeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Scripts/Editor/ChunkIndex.uxml");
+        _treeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Scripts/Editor/ChunkIndexEditor.uxml");
         _chunk = new SerializedObject(target);
     }
 
@@ -21,11 +22,10 @@ public class ChunkIndexEditor : Editor
     {
         _rootElement.Clear();
         _treeAsset.CloneTree(_rootElement);
-
-        VisualElement index = new Vector3IntField("Index");
-        index.Bind(_chunk);
-
-        _rootElement.Add(index);
+        
+        // This looks ugly but I couldn't figure out how to bind through the editor
+        var chunkIndex = _chunk.FindProperty("_chunkIndex");
+        ((Vector3IntField)_rootElement.ElementAt(0)).BindProperty(chunkIndex);
 
         _chunk.ApplyModifiedProperties();
         _chunk.UpdateIfRequiredOrScript();
