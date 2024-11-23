@@ -6,7 +6,6 @@ namespace Minecraft
 	public class TerrainChunksPool : MonoBehaviour
 	{
 		private readonly Dictionary<Vector3Int, TerrainChunk> currentChunks = new Dictionary<Vector3Int, TerrainChunk>();
-
 		private readonly Queue<TerrainChunk> deactivatedChunks = new Queue<TerrainChunk>();
 
 		public TerrainChunk Instantiate(Vector3Int chunkIndex, Transform parent)
@@ -15,9 +14,9 @@ namespace Minecraft
 
 			if (deactivatedChunks.Count == 0)
 			{
-				var chunk = new GameObject("CHUNK", typeof(MeshRenderer), typeof(MeshFilter), typeof(MeshCollider), typeof(TerrainChunk));
+				var chunk = new GameObject("CHUNK", typeof(MeshRenderer), typeof(MeshFilter), typeof(MeshCollider));
 				chunk.transform.SetParent(parent);
-				newChunk = chunk.GetComponent<TerrainChunk>();
+				newChunk = chunk.AddComponent<TerrainChunk>();
 			}
 			else
 			{
@@ -36,12 +35,9 @@ namespace Minecraft
 			foreach (var chunkIndex in chunksToDestroy)
 			{
 				var chunk = GetChunk(chunkIndex);
-
-				if (chunk != null)
-				{
-					chunk.gameObject.SetActive(false);
-					deactivatedChunks.Enqueue(chunk);
-				}
+				if (!chunk) continue;
+				chunk.gameObject.SetActive(false);
+				deactivatedChunks.Enqueue(chunk);
 			}
 		}
 
@@ -50,7 +46,7 @@ namespace Minecraft
 			foreach (var key in currentChunks)
 			{
 				if (key.Key == exceptIndex) continue;
-				if(currentChunks[key.Key] == null) continue; 
+				if(!currentChunks[key.Key]) continue;
 				Destroy(currentChunks[key.Key].gameObject);
 			}
 
@@ -65,7 +61,7 @@ namespace Minecraft
 
 		public TerrainChunk GetChunk(Vector3Int chunkIndex)
 		{
-			return currentChunks.TryGetValue(chunkIndex, out TerrainChunk chunk) ? chunk : null;
+			return currentChunks.GetValueOrDefault(chunkIndex);
 		}
 	}
 }
