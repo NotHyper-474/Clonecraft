@@ -1,34 +1,37 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Minecraft
 {
 	public class Dynamite : MonoBehaviour
 	{
-		private bool triggered;
+		[SerializeField] private float explosionRadius = 5f;
+		
+		private bool _triggered;
 
-		private System.Collections.IEnumerator OnCollisionEnter(Collision other)
+		private async Task OnCollisionEnter(Collision _)
 		{
-			if (triggered) yield break;
-			triggered = true;
-			yield return new WaitForSeconds(3f);
+			if (_triggered) return;
+			_triggered = true;
+			await Task.Delay(3000);
 			Stack<TerrainChunk> chunksToRegenerate = new Stack<TerrainChunk>();
-			foreach (var entry in GetBlocksInSphere(transform.position, 5f))
+			foreach (var (chunk, block) in GetBlocksInSphere(transform.position, explosionRadius))
 			{
-				TerrainChunk chunk = entry.Item1;
-				TerrainBlock block = entry.Item2;
-
 				chunk.SetBlockType(block.index, VoxelType.Air);
 				chunksToRegenerate.Push(chunk);
 			}
-			Destroy(gameObject);
+			// We cannot destroy it yet or else nearby chunks won't regenerate their mesh
+			gameObject.SetActive(false);
 			while (chunksToRegenerate.Count > 0)
 			{
 				var chunk = chunksToRegenerate.Pop();
 				TerrainManager.Instance.BuildMeshForChunk(chunk);
-                yield return new WaitForEndOfFrame();
+				await Task.Yield();
 			}
+			
+			Destroy(gameObject);
 		}
 		
 		private IEnumerable<Tuple<TerrainChunk, TerrainBlock>> GetBlocksInSphere(Vector3 sphereCenter, float radius)
@@ -49,15 +52,12 @@ namespace Minecraft
 					{
 						Vector3 blockCenter = new Vector3(x, y, z);
 						float dis = Vector3.SqrMagnitude(blockCenter - sphereCenter);
+						if (dis > sphereRadius2) continue;
 
-						if (dis <= sphereRadius2)
+						var block = TerrainManager.Instance.GetBlockAt(blockCenter, out TerrainChunk chunk);
+						if (!block.IsEmpty())
 						{
-							var block = TerrainManager.Instance.GetBlockAt(blockCenter, out TerrainChunk chunk);
-
-							if (!block.IsEmpty())
-							{
-								yield return new Tuple<TerrainChunk, TerrainBlock>(chunk, block);
-							}
+							yield return new Tuple<TerrainChunk, TerrainBlock>(chunk, block);
 						}
 					}
 				}
