@@ -54,6 +54,8 @@ namespace Minecraft
 					Debug.DrawLine(transform.position + Vector3.up * 0.3f, pointOnTerrain.Point, Color.green);
 					Debug.DrawLine(transform.position + Vector3.up * 0.1f, block.globalIndex, new Color(1f, 0f, 0f, 0.5f));
 					Bounds blockBounds = new Bounds(block.globalIndex, Vector3.one);
+					Bounds playerBounds = playerController.Controller.bounds;
+					playerBounds.Expand(new Vector3(0f, 1f, 0f));
 
 					if (Input.GetMouseButtonDown(0))
 					{
@@ -61,21 +63,21 @@ namespace Minecraft
 					}
 					else if (Input.GetMouseButtonDown(1))
 					{
-						if(!blockBounds.Intersects(playerController.Controller.bounds))
+						if(!blockBounds.Intersects(playerBounds))
 						{
 							manager.AddBlock(cRay, types[selectedType]);
 						}
 					}
 					else if (Input.GetMouseButtonDown(2) || Input.GetKeyDown(KeyCode.Alpha3))
 					{
-						if (!blockBounds.Intersects(playerController.Controller.bounds))
+						if (!blockBounds.Intersects(playerBounds))
 						{
 							Physics.Raycast(cRay, out RaycastHit hit);
 							Instantiate(dinamitePrefab, hit.point, Quaternion.identity);
 						}
 					}
 
-					const float faceOffset = 1.001f;
+					const float faceOffset = 1.005f;
 
 					var blockFaceCenter = blockBounds.center + Vector3.Scale(pointOnTerrain.Normal, blockBounds.extents * faceOffset);
 
