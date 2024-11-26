@@ -65,7 +65,7 @@ namespace Minecraft
 			debugChunk.Setup(Vector3Int.zero, chunkSize, false);
 			terrainGenerator.GenerateBlocksFor(debugChunk);
 			//BuildMeshForChunk(debugChunk);
-			TerrainChunkCulledMesher mesher = new TerrainChunkCulledMesher();
+			TerrainChunkMesherCulled mesher = new TerrainChunkMesherCulled();
 			mesher.GenerateMeshFor(debugChunk);
 
 			Destroy(debugChunk.gameObject);
@@ -153,36 +153,21 @@ namespace Minecraft
 
 		private async Task GenerateChunks(IEnumerable<Vector3Int> chunksToCreate)
 		{
-			/*List<TerrainChunk> chunksToMesh = new List<TerrainChunk>();
-			int j = 0;*/
-			// Pre-generate chunks first
 			foreach (var chunkIndex in chunksToCreate)
 			{
 				var newChunk = chunksPool.Instantiate(chunkIndex, transform);
 				newChunk.Setup(chunkIndex, chunkSize, false);
 				newChunk.transform.position = blockSize * Vector3.Scale(newChunk.index, newChunk.Size);
 				terrainGenerator.GenerateBlocksFor(newChunk);
-				/*chunksToMesh.Add(newChunk);
-				j++;*/
-				// Generate meshes every 4 chunks
-				//if (j % 4 == 0)
+				try
 				{
-					try
-					{
-						//for (int i = 0; i < chunksToMesh.Count; i++)
-						{
-							builder.Clear();
-							Mesh m = builder.JobsBuildChunk(newChunk);
-							newChunk.SetMesh(m, defaultMaterial);
-							await Task.Yield();
-						}
-						//chunksToMesh.Clear();
-						continue;
-					}
-					catch (Exception e)
-					{
-						Debug.LogException(e);
-					}
+					builder.Clear();
+					Mesh m = builder.JobsBuildChunk(newChunk);
+					newChunk.SetMesh(m, defaultMaterial);
+				}
+				catch (Exception e)
+				{
+					Debug.LogException(e);
 				}
 				await Task.Yield();
 			}
