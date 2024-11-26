@@ -5,6 +5,6 @@ namespace Minecraft
 {
     public abstract class TerrainChunkMesherBase : ITerrainChunkMesher
     {
-        public abstract void GenerateMeshFor(TerrainChunk chunk);
+        public abstract void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors = null);
     }
 }
