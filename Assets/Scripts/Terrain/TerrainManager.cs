@@ -226,14 +226,14 @@ namespace Minecraft
 			chunk = chunksPool.GetChunk(chunkIndex);
 
 			// TODO: Use TerrainChunkGenerator GetOrGenerate
-			if (chunk == null)
+			if (!chunk)
 			{
 				/*chunk = null;
 				chunk = chunksPool.Instantiate(chunkIndex, transform);
 				chunk.Setup(chunkIndex * chunkSize, chunkSize, false);
 				chunk.transform.position = chunkIndex * chunkSize;*/
 				var blockType = VoxelType.Stone;//terrainGenerator.CalculateBlockType(chunkSize, Vector3Int.FloorToInt(worldPoint));
-				return new TerrainBlock(blockType, (Vector3Int.FloorToInt(worldPoint) - (chunkIndex * chunkSize)), 0);
+				return new TerrainBlock(blockType, (Vector3Int.FloorToInt(worldPoint) - (chunkIndex * chunkSize)), Vector3Int.FloorToInt(worldPoint), 0);
 			}
 
 			return chunk.GetBlock(
