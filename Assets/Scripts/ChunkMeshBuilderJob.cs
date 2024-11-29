@@ -15,11 +15,11 @@ namespace Minecraft
         [WriteOnly] public NativeList<Vector3> normals;
         [WriteOnly] public NativeList<Vector3> uvs;
 
-        [ReadOnly] public NativeArray<VoxelType> voxels;
-        //[ReadOnly] public NativeBitArray neighborVoxels;
+        [ReadOnly] public NativeArray<TerrainBlock> voxels;
         [ReadOnly] public int3 chunkSize;
         [ReadOnly] public float blockSize;
 
+        // TODO: Would an enum work as well?
         private const int SOUTH = 0, NORTH = 1,
                 EAST = 2, WEST = 3, TOP = 4, BOTTOM = 5;
 
@@ -29,7 +29,7 @@ namespace Minecraft
         {
             // TODO: Check for blocks in neighbor chunk
 
-            return voxels[MathUtils.To1D(pos.x, pos.y, pos.z, chunkSize.x, chunkSize.y)];
+            return voxels[MathUtils.To1D(pos.x, pos.y, pos.z, chunkSize.x, chunkSize.y)].type;
         }
 
         /// <summary>

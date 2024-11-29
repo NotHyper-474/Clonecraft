@@ -24,41 +24,30 @@ namespace Minecraft
 			meshRenderer = GetComponent<MeshRenderer>();
 		}
 
-		public void Setup(Vector3Int globalIndex, Vector3Int chunkSize, bool fillEmpty = true)
+		public void Setup(Vector3Int globalIndex, TerrainConfig config, bool fillEmpty = true)
 		{
 			index = globalIndex;
-			Size = chunkSize;
-			blocks = new TerrainBlock[chunkSize.x * chunkSize.y * chunkSize.z];
+			Size = config.chunkSize;
+			blocks = new TerrainBlock[Size.x * Size.y * Size.z];
 			
 			if (!fillEmpty) return;
 			// Cycle through blocks to assign them empty data
 			System.Threading.Tasks.Parallel.For(0, blocks.Length, i =>
 			{
 				var blockIndex = MathUtils.To3D(i, Size.x, Size.y);
-				blocks[i] = new TerrainBlock(VoxelType.Air, blockIndex, index + blockIndex, 0);
+				blocks[i] = new TerrainBlock(VoxelType.Air, blockIndex, globalIndex: index + blockIndex, 0);
 			});
 			//firstBlockGlobalIndex = index * Size - Vector3Int.one;
 		}
 
-		[Obsolete()]
-		public static TerrainChunk SetupAndInstantiate(Vector3Int globalIndex, Vector3Int chunkSize, Transform parent)
-		{
-			GameObject go = new GameObject("CHUNK", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider), typeof(TerrainChunk));
-			go.transform.position = new Vector3(globalIndex.x * chunkSize.x, globalIndex.y * chunkSize.y, globalIndex.z * chunkSize.z);
-			go.transform.SetParent(parent);
-			go.GetComponent<TerrainChunk>().Setup(globalIndex, chunkSize);
-
-			return go.GetComponent<TerrainChunk>();
-		}
-
 		public void SetMesh(Mesh mesh, Material material)
 		{
-			if (mesh == null)
-				meshFilter.mesh.Clear();
+			if (!mesh && meshFilter.mesh)
+				Destroy(meshFilter.mesh);
 			meshFilter.mesh = mesh;
 			
-			if (meshCollider != null) meshCollider.sharedMesh = mesh;
-			if (material == null) return;
+			if (meshCollider) meshCollider.sharedMesh = mesh;
+			if (!material) return;
 			meshRenderer.material = material;
 		}
 
@@ -67,16 +56,15 @@ namespace Minecraft
 			blocks[MathUtils.To1D(localIndex.x, localIndex.y, localIndex.z, Size.x, Size.y)].type = type;
 		}
 
-		public TerrainBlock GetBlock(int x, int y, int z)
+		public TerrainBlock? GetBlock(int x, int y, int z)
 		{
-			//Debug.Log("true at " + new Vector3Int(x, y, z));
 			if (x >= 0 && y >= 0 && z >= 0 && x < Size.x && y < Size.y && z < Size.z)
 				return blocks[MathUtils.To1D(x, y, z, Size.x, Size.y)];
-			var ind = new Vector3Int(x, y, z);
-			return GetEmptyBlock(ind, ind * index);
+
+			return null;
 		}
 
-		public TerrainBlock GetBlock(Vector3Int position)
+		public TerrainBlock? GetBlock(Vector3Int position)
 		{
 			return GetBlock(position.x, position.y, position.z);
 		}

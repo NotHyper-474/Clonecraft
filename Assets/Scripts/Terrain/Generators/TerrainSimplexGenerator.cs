@@ -15,7 +15,6 @@ namespace Minecraft
 			int x, y, z;
 			(x, y, z) = (blockGlobalIndex.x, blockGlobalIndex.y, blockGlobalIndex.z);
 
-
 			float simplex1 = noise.GetSimplex(x * .8f, z * .8f) * 10;
 			float simplex2 = noise.GetSimplex(x * 3f, z * 3f) * 10 * (noise.GetSimplex(x * .3f, z * .3f) + .5f);
 
@@ -34,14 +33,13 @@ namespace Minecraft
 
 			float stoneHeightMap = simplexStone1 + simplexStone2;
 			float baseStoneHeight = chunkSize.y * .25f + stoneHeightMap;
-
-
+			
 			//float cliffThing = noise.GetSimplex(x * 1f, z * 1f, y) * 10;
 			//float cliffThingMask = noise.GetSimplex(x * .4f, z * .4f) + .3f;
 
 			VoxelType blockType = VoxelType.Air;
 
-			//under the surface, dirt block
+			// under the surface, dirt block
 			if (y <= baseLandHeight)
 			{
 				blockType = VoxelType.Dirt;

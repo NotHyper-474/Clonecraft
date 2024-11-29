@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 190531326}
   - component: {fileID: 190531325}
   - component: {fileID: 190531327}
+  - component: {fileID: 190531328}
   m_Layer: 0
   m_Name: Terrain Manager
   m_TagString: Untagged
@@ -151,14 +152,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   seed: lucky
   terrainGenerator: {fileID: 11400000, guid: cb6e13cd898c61c428861b21e225de22, type: 2}
+  chunkMesher: {fileID: 11400000, guid: 639d757bb7c4a7683be0faa36ba05a5f, type: 2}
   chunkGeneratePriority: 4
-  playerPrefab: {fileID: 1463377889}
-  defaultMaterial: {fileID: 2100000, guid: 8623c0f3308c77a46ad3bd5bc748de8d, type: 2}
   chunksPool: {fileID: 190531327}
-  chunkSize: {x: 8, y: 128, z: 8}
-  blockSize: 1
-  renderDistance: 8
-  _RayOffset: 0.01
+  config: {fileID: 190531328}
+  renderDistance: 1
+  defaultMaterial: {fileID: 2100000, guid: 8623c0f3308c77a46ad3bd5bc748de8d, type: 2}
+  playerPrefab: {fileID: 1463377889}
+  minecraftFont: {fileID: 12800000, guid: a37239558563d51799b929fcfdcad7f1, type: 3}
+  rayOffset: 0.01
 --- !u!4 &190531326
 Transform:
   m_ObjectHideFlags: 0
@@ -186,6 +188,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb38f7fc8ee320f43965e0519ac39d4d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  chunkPrefab: {fileID: 5775687657840558659, guid: 98cc1d74d6d4f7440b41bc0ec1f65e46, type: 3}
+--- !u!114 &190531328
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 190531324}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b84f6e2b2a8d84d6b97b32fee5d76948, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  chunkSize: {x: 16, y: 256, z: 16}
+  blockSize: 1
 --- !u!1 &369796122
 GameObject:
   m_ObjectHideFlags: 0
@@ -638,7 +655,6 @@ MonoBehaviour:
   dinamitePrefab: {fileID: 1059932017721611182, guid: e2c5dacbe1e685942b9460ce341cdbb4, type: 3}
   selectedType: 0
   types: 01020304
-  manager: {fileID: 190531325}
 --- !u!1 &1441497691
 GameObject:
   m_ObjectHideFlags: 0
@@ -746,6 +762,7 @@ MonoBehaviour:
   walkSpeed: 6
   runSpeed: 9
   jumpSpeed: 3
+  gravityMultiplier: 2
 --- !u!4 &1463377892
 Transform:
   m_ObjectHideFlags: 0
@@ -899,37 +916,6 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
---- !u!1 &1944610514
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1944610515}
-  m_Layer: 0
-  m_Name: Test
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1944610515
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1944610514}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -940,4 +926,3 @@ SceneRoots:
   - {fileID: 985510134}
   - {fileID: 1463377892}
   - {fileID: 369796126}
-  - {fileID: 1944610515}

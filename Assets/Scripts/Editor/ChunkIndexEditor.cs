@@ -23,7 +23,7 @@ public class ChunkIndexEditor : Editor
         _rootElement.Clear();
         _treeAsset.CloneTree(_rootElement);
         
-        // This looks ugly but I couldn't figure out how to bind through the editor
+        // This looks ugly, but I couldn't figure out how to bind through the editor
         var chunkIndex = _chunk.FindProperty("_chunkIndex");
         ((Vector3IntField)_rootElement.ElementAt(0)).BindProperty(chunkIndex);
 
