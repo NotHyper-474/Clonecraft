@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Minecraft
 {
 	[CreateAssetMenu(menuName = "Clonecraft/Meshers/Culled", fileName = "Culled Mesher")]
-	public class TerrainChunkMesherCulled : TerrainChunkMesherBase
+	public sealed class TerrainChunkMesherCulled : TerrainChunkMesherBase
 	{
 		private readonly List<Vector3> _vertices = new();
 		private readonly List<int> _triangles = new();

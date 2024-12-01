@@ -27,7 +27,7 @@ namespace Minecraft
 			while (chunksToRegenerate.Count > 0)
 			{
 				var chunk = chunksToRegenerate.Pop();
-				TerrainManager.Instance.BuildMeshForChunk(chunk);
+				TerrainManager.Instance.RegenerateChunkMesh(chunk);
 				await Task.Yield();
 			}
 			

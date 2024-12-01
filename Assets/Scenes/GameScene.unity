@@ -152,11 +152,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   seed: lucky
   terrainGenerator: {fileID: 11400000, guid: cb6e13cd898c61c428861b21e225de22, type: 2}
-  chunkMesher: {fileID: 11400000, guid: 639d757bb7c4a7683be0faa36ba05a5f, type: 2}
-  chunkGeneratePriority: 4
+  chunkMesher: {fileID: 11400000, guid: 6c3d5a114d1a89abbb8f6697193d4de4, type: 2}
+  chunkGeneratePriority: 0
   chunksPool: {fileID: 190531327}
   config: {fileID: 190531328}
-  renderDistance: 1
+  renderDistance: 8
   defaultMaterial: {fileID: 2100000, guid: 8623c0f3308c77a46ad3bd5bc748de8d, type: 2}
   playerPrefab: {fileID: 1463377889}
   minecraftFont: {fileID: 12800000, guid: a37239558563d51799b929fcfdcad7f1, type: 3}

@@ -14,7 +14,7 @@ namespace Minecraft
         private readonly TerrainChunksPool _chunksPool;
         private readonly TerrainConfig _config;
 
-        private TerrainChunk InstantiateAndSetup(Vector3Int index, Transform chunkParent)
+        public TerrainChunk InstantiateAndSetup(Vector3Int index, Transform chunkParent)
         {
             var newChunk = _chunksPool.Instantiate(index, chunkParent);
             newChunk.Setup(index, _config, false);
@@ -24,10 +24,7 @@ namespace Minecraft
         public TerrainChunk GetOrGenerateChunk(Vector3Int chunkIndex, Transform chunkParent)
         {
             var chunk = _chunksPool.GetChunk(chunkIndex);
-
-            if (!chunk)
-                chunk = InstantiateAndSetup(chunkIndex, chunkParent);
-
+            if (!chunk) chunk = InstantiateAndSetup(chunkIndex, chunkParent);
             return chunk;
         }
     }

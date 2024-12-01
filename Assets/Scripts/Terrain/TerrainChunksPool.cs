@@ -8,8 +8,8 @@ namespace Minecraft
 	{
 		[SerializeField] private TerrainChunk chunkPrefab;
 		
-		private readonly Dictionary<Vector3Int, TerrainChunk> currentChunks = new Dictionary<Vector3Int, TerrainChunk>();
-		private readonly Queue<TerrainChunk> deactivatedChunks = new Queue<TerrainChunk>();
+		private readonly Dictionary<Vector3Int, TerrainChunk> currentChunks = new();
+		private readonly Queue<TerrainChunk> deactivatedChunks = new();
 
 		// ReSharper disable Unity.PerformanceAnalysis
 		public TerrainChunk Instantiate(Vector3Int chunkIndex, Transform parent)
@@ -23,7 +23,6 @@ namespace Minecraft
 			else
 			{
 				newChunk = deactivatedChunks.Dequeue();
-				newChunk.SetMesh(null, null);
 				newChunk.gameObject.SetActive(true);
 			}
 
@@ -63,7 +62,7 @@ namespace Minecraft
 
 		public TerrainChunk GetChunk(Vector3Int chunkIndex)
 		{
-			return currentChunks.GetValueOrDefault(chunkIndex);
+			return currentChunks.GetValueOrDefault(chunkIndex, null);
 		}
 	}
 }

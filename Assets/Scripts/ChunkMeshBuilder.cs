@@ -16,7 +16,7 @@ namespace Minecraft
     public sealed class ChunkMeshBuilder : System.IDisposable
     {
         private readonly TerrainManager manager;
-        private TerrainChunkMeshBuildJob greedyJob;
+        private TerrainChunkMesherGreedyJob greedyJob;
         private JobHandle jobHandle;
 
         private float avgMeshingTime;
@@ -26,7 +26,7 @@ namespace Minecraft
         public ChunkMeshBuilder(TerrainManager manager, TerrainConfig config)
         {
             this.manager = manager;
-            greedyJob = new TerrainChunkMeshBuildJob()
+            greedyJob = new TerrainChunkMesherGreedyJob()
             {
                 vertices = new NativeList<Vector3>(Allocator.Persistent),
                 triangles = new NativeList<int>(Allocator.Persistent),
@@ -55,7 +55,7 @@ namespace Minecraft
         {
 			Stopwatch s1 = new Stopwatch();
 			s1.Start();
-			
+
             greedyJob.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
             greedyJob.voxels = new NativeArray<TerrainBlock>(chunk.blocks, Allocator.TempJob);//new NativeArray<TerrainBlock>(chunk.blocks.Length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
             //ConvertVoxels(chunk, ref greedyJob.voxels);
