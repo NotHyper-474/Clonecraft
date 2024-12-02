@@ -5,8 +5,8 @@ namespace Minecraft
 {
 	public class TerrainChunk : MonoBehaviour
 	{
-		public Vector3Int index { get => _chunkIndex; private set => _chunkIndex = value; }
-		public TerrainBlock[] blocks { get; private set; }
+		public Vector3Int Index { get => _chunkIndex; private set => _chunkIndex = value; }
+		public TerrainBlock[] Blocks { get; private set; }
 		public Vector3Int Size { get; private set; }
 
 		public MeshFilter meshFilter { get; protected set; }
@@ -32,15 +32,15 @@ namespace Minecraft
 			_chunkIndex = globalIndex;
 			Size = config.chunkSize;
 			transform.position = _chunkIndex * Size;
-			if (blocks == null || blocks.Length == 0)
-				blocks = new TerrainBlock[Size.x * Size.y * Size.z];
+			if (Blocks == null || Blocks.Length == 0)
+				Blocks = new TerrainBlock[Size.x * Size.y * Size.z];
 			
 			if (!fillEmpty) return;
 			// Cycle through blocks to assign them empty data
-			System.Threading.Tasks.Parallel.For(0, blocks.Length, i =>
+			System.Threading.Tasks.Parallel.For(0, Blocks.Length, i =>
 			{
 				var blockIndex = MathUtils.To3D(i, Size.x, Size.y);
-				blocks[i] = new TerrainBlock(VoxelType.Air, blockIndex, globalIndex: _chunkIndex + blockIndex, 0);
+				Blocks[i] = new TerrainBlock(VoxelType.Air, blockIndex, globalIndex: _chunkIndex + blockIndex, 0);
 			});
 			//firstBlockGlobalIndex = index * Size - Vector3Int.one;
 		}
@@ -58,13 +58,13 @@ namespace Minecraft
 
 		public void SetBlockType(Vector3Int localIndex, VoxelType type)
 		{
-			blocks[MathUtils.To1D(localIndex.x, localIndex.y, localIndex.z, Size.x, Size.y)].type = type;
+			Blocks[MathUtils.To1D(localIndex.x, localIndex.y, localIndex.z, Size.x, Size.y)].type = type;
 		}
 
 		public TerrainBlock? GetBlock(int x, int y, int z)
 		{
 			if (x >= 0 && y >= 0 && z >= 0 && x < Size.x && y < Size.y && z < Size.z)
-				return blocks[MathUtils.To1D(x, y, z, Size.x, Size.y)];
+				return Blocks[MathUtils.To1D(x, y, z, Size.x, Size.y)];
 
 			return null;
 		}

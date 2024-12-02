@@ -24,27 +24,27 @@ namespace Minecraft
 		{
 			for (int j = 0; j < _sideLookup.Length; j++)
 			{
-				for (int i = 0; i < chunk.blocks.Length; i++)
+				for (int i = 0; i < chunk.Blocks.Length; i++)
 				{
-					if (chunk.blocks[i].IsEmpty()) continue;
+					if (chunk.Blocks[i].IsEmpty()) continue;
 
-					var nextIndex = chunk.blocks[i].index + _sideLookup[j];
+					var nextIndex = chunk.Blocks[i].index + _sideLookup[j];
 					var blockAtSide = chunk.GetBlock(nextIndex);
 					if (!blockAtSide.HasValue && neighbours != null && neighbours.Length != 0)
 					{
-						nextIndex += chunk.index;
+						nextIndex += chunk.Index;
 						var adjChunkIdx = TerrainManager.Instance.GetChunkIndexAt(nextIndex);
 						foreach (var chk in neighbours)
 						{
-							if (chk.index == adjChunkIdx)
+							if (chk.Index == adjChunkIdx)
 							{
-								blockAtSide = chk.GetBlock(nextIndex - chunk.index);
+								blockAtSide = chk.GetBlock(nextIndex - chunk.Index);
 							}
 						}
 					}
 
 					if (blockAtSide?.IsEmpty() == false)
-						AddFace(chunk.blocks[i].index, _sideLookup[j]);
+						AddFace(chunk.Blocks[i].index, _sideLookup[j]);
 				}
 			}
 			Mesh mesh = new Mesh

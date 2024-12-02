@@ -33,7 +33,7 @@ namespace Minecraft
             ClearJob();
             _job.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
             _job.blockSize = TerrainManager.Instance.TerrainConfig.blockSize;
-            _job.voxels = new NativeArray<TerrainBlock>(chunk.blocks, Allocator.TempJob);
+            _job.voxels = new NativeArray<TerrainBlock>(chunk.Blocks, Allocator.TempJob);
             _job.RunByRef();
 
             var mesh = chunk.ChunkMesh;

@@ -57,7 +57,7 @@ namespace Minecraft
 			s1.Start();
 
             greedyJob.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
-            greedyJob.voxels = new NativeArray<TerrainBlock>(chunk.blocks, Allocator.TempJob);//new NativeArray<TerrainBlock>(chunk.blocks.Length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            greedyJob.voxels = new NativeArray<TerrainBlock>(chunk.Blocks, Allocator.TempJob);//new NativeArray<TerrainBlock>(chunk.blocks.Length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
             //ConvertVoxels(chunk, ref greedyJob.voxels);
 
             jobHandle = greedyJob.Schedule();
