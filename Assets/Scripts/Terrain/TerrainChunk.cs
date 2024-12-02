@@ -5,7 +5,7 @@ namespace Minecraft
 {
 	public class TerrainChunk : MonoBehaviour
 	{
-		public Vector3Int Index { get => _chunkIndex; private set => _chunkIndex = value; }
+		public Vector3Int Index => _chunkIndex;
 		public TerrainBlock[] Blocks { get; private set; }
 		public Vector3Int Size { get; private set; }
 

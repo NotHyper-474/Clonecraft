@@ -118,9 +118,10 @@ namespace Minecraft
 
         private async void Update()
         {
-            if (_prevRenderDistance != renderDistance && renderDistance != 0 /* To fix chunks never generating again*/)
+            if (_prevRenderDistance != renderDistance && renderDistance != 0)
             {
-                chunksPool.DisposeAll(_playerChunk);
+                chunksPool.Deactivate(_currentChunks.Where((i => i != _playerChunk)));
+                _currentChunks.Clear();
                 _forceUpdate = true;
                 _updatingTerrain = false;
                 _prevRenderDistance = renderDistance;
@@ -232,7 +233,7 @@ namespace Minecraft
             if (!chunk) chunk = _chunkGenerator.GetOrGenerateChunk(chunkIndex, transform);
 
             return chunk.GetBlock(
-                Vector3Int.FloorToInt(worldPoint - (chunk.index * chunk.Size) + 0.5f * Vector3.one)
+                Vector3Int.FloorToInt(worldPoint - (chunk.Index * chunk.Size) + 0.5f * Vector3.one)
             ).GetValueOrDefault();
         }
 
