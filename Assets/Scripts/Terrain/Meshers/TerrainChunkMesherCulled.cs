@@ -22,13 +22,13 @@ namespace Minecraft
 
 		public override void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbours = null)
 		{
-			for (int j = 0; j < _sideLookup.Length; j++)
+			foreach (var side in _sideLookup)
 			{
 				for (int i = 0; i < chunk.Blocks.Length; i++)
 				{
 					if (chunk.Blocks[i].IsEmpty()) continue;
 
-					var nextIndex = chunk.Blocks[i].index + _sideLookup[j];
+					var nextIndex = chunk.Blocks[i].index + side;
 					var blockAtSide = chunk.GetBlock(nextIndex);
 					if (!blockAtSide.HasValue && neighbours != null && neighbours.Length != 0)
 					{
@@ -43,8 +43,8 @@ namespace Minecraft
 						}
 					}
 
-					if (blockAtSide?.IsEmpty() == false)
-						AddFace(chunk.Blocks[i].index, _sideLookup[j]);
+					if (blockAtSide == null || blockAtSide.Value.IsEmpty())
+						AddFace(chunk.Blocks[i].index, side);
 				}
 			}
 			Mesh mesh = new Mesh
@@ -61,12 +61,14 @@ namespace Minecraft
 
 		private void AddFace(Vector3Int position, Vector3Int faceNormal)
 		{
+			const float offset = 0.5f;
 			var face = new Vector3[4];
-			Vector3 offsetPosition = position - Vector3.one * 0.5f;
+			Vector3 offsetPosition = position;
+			
 			// Calculate the rotated direction vectors based on the faceNormal
-			Vector3 forward = Quaternion.LookRotation(faceNormal) * Vector3.forward;
-			Vector3 right = Quaternion.LookRotation(faceNormal) * Vector3.right;
-			Vector3 up = Quaternion.LookRotation(faceNormal) * Vector3.up;
+			Vector3 forward = Quaternion.LookRotation(faceNormal) * Vector3.forward * offset;
+			Vector3 right = Quaternion.LookRotation(faceNormal) * Vector3.right * offset;
+			Vector3 up = Quaternion.LookRotation(faceNormal) * Vector3.up * offset;
 
 			// Calculate the vertices based on the position and the rotated direction vectors
 			face[0] = offsetPosition + forward - right - up;
