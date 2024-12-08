@@ -1,7 +1,7 @@
-using System;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine.Rendering;
 using UnityEngine;
 
 namespace Minecraft
@@ -9,61 +9,29 @@ namespace Minecraft
     [CreateAssetMenu(menuName = "Clonecraft/Meshers/Greedy", fileName = "Greedy Mesher")]
     public sealed class TerrainChunkMesherGreedy : TerrainChunkMesherBase
     {
-        private TerrainChunkMesherGreedyJob _job = new()
-        {
-            vertices = new NativeList<Vector3>(Allocator.Persistent),
-            triangles = new NativeList<int>(Allocator.Persistent),
-            uvs = new NativeList<Vector3>(Allocator.Persistent),
-            normals = new NativeList<Vector3>(Allocator.Persistent),
-        };
-        private bool _jobInitialized;
-
-        private void OnDisable()
-        {
-            Dispose();
-        }
+        private TerrainChunkMesherGreedyJob _job;
 
         public override void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors = null)
         {
-            if (neighbors != null && neighbors.Length != 0)
+            var mesh = chunk.ChunkMesh;
+            if (!mesh)
             {
-                Debug.LogWarning("Neighbour chunks are going to be ignored.");
+                mesh = new Mesh();
             }
 
-            ClearJob();
+            var meshArray = Mesh.AllocateWritableMeshData(mesh);
+            _job.mesh = meshArray[0];
             _job.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
             _job.blockSize = TerrainManager.Instance.TerrainConfig.blockSize;
             _job.voxels = new NativeArray<TerrainBlock>(chunk.Blocks, Allocator.TempJob);
-            _job.RunByRef();
-
-            var mesh = chunk.ChunkMesh;
-            if (!mesh)
-                mesh = new Mesh();
+            _job.Schedule().Complete();
+            Mesh.ApplyAndDisposeWritableMeshData(meshArray, mesh);
             
-            mesh.Clear();
-            mesh.SetVertices(_job.vertices.AsArray());
-            mesh.SetIndices(_job.triangles.AsArray(), MeshTopology.Triangles, 0);
-            mesh.SetNormals(_job.normals.AsArray());
-            mesh.SetUVs(0, _job.uvs.AsArray());
+            // FIXME: For some reason setting bounds directly doesn't work so this is needed as a workaround, investigate
+            mesh.RecalculateBounds();
             chunk.SetMesh(mesh, null);
 
             _job.voxels.Dispose();
-        }
-
-        private void ClearJob()
-        {
-            _job.vertices.Clear();
-            _job.triangles.Clear();
-            _job.uvs.Clear();
-            _job.normals.Clear();
-        } 
-
-        private void Dispose()
-        {
-            if (_job.vertices.IsCreated) _job.vertices.Dispose();
-            if (_job.triangles.IsCreated) _job.triangles.Dispose();
-            if (_job.normals.IsCreated) _job.normals.Dispose();
-            if (_job.uvs.IsCreated) _job.uvs.Dispose();
         }
     }
 }

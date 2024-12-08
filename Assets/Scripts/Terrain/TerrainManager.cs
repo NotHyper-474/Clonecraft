@@ -47,20 +47,7 @@ namespace Minecraft
         private bool _updatingTerrain;
         private bool _forceUpdate;
 
-        private ChunkMeshBuilder _builder;
         private TerrainChunkGenerator _chunkGenerator;
-
-        private void OnEnable()
-        {
-            /* TODO: This seems to fix an error after hot-reloading but causes another?
-             * Doesn't seem to impact anything anyway */
-            _builder ??= new ChunkMeshBuilder(this, config);
-        }
-
-        private void OnDestroy()
-        {
-            _builder.Dispose();
-        }
 
         private void Awake()
         {
@@ -72,7 +59,6 @@ namespace Minecraft
             Debug.Assert(terrainGenerator != null);
             terrainGenerator.SetSeed(numSeed);
 
-            _builder = new ChunkMeshBuilder(this, config);
             _player = playerPrefab.transform;
             _playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
 
