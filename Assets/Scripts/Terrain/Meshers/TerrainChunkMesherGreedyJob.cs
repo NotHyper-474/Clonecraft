@@ -17,8 +17,8 @@ namespace Minecraft
         [ReadOnly] public int3 chunkSize;
         [ReadOnly] public float blockSize;
 
-        private int _vertexIndex;
-        private int _indiceIndex;
+        private int _vertexCount;
+        private int _indexCount;
 
         // TODO: Would an enum work as well?
         private const int SOUTH = 0,
@@ -219,12 +219,12 @@ namespace Minecraft
              however it'll use more memory. Maybe dynamically resize the arrays when needed or use a NativeList
              like before to be copied to the mesh's vertex data?
              */
-            mesh.SetVertexBufferParams(_vertexIndex, attributes);
-            mesh.SetIndexBufferParams(_indiceIndex, IndexFormat.UInt16);
+            mesh.SetVertexBufferParams(_vertexCount, attributes);
+            mesh.SetIndexBufferParams(_indexCount, IndexFormat.UInt16);
             mesh.subMeshCount = 1;
 
             //var f32ChunkSize = math.asfloat(chunkSize);
-            var descriptor = new SubMeshDescriptor(0, _indiceIndex)
+            var descriptor = new SubMeshDescriptor(0, _indexCount)
             {
                 //bounds = new Bounds(0.5f * blockSize * f32ChunkSize, f32ChunkSize * blockSize),
             };
@@ -250,28 +250,28 @@ namespace Minecraft
         )
         {
             int maskNormal = (int)(mask >> 32 & 0x3UL) - 1;
-            indexData[_indiceIndex + 0] = (ushort)(_vertexIndex + 0);
-            indexData[_indiceIndex + 1] = (ushort)(_vertexIndex + 2 + maskNormal);
-            indexData[_indiceIndex + 2] = (ushort)(_vertexIndex + 2 - maskNormal);
-            indexData[_indiceIndex + 3] = (ushort)(_vertexIndex + 3);
-            indexData[_indiceIndex + 4] = (ushort)(_vertexIndex + 1 - maskNormal);
-            indexData[_indiceIndex + 5] = (ushort)(_vertexIndex + 1 + maskNormal);
+            indexData[_indexCount + 0] = (ushort)(_vertexCount + 0);
+            indexData[_indexCount + 1] = (ushort)(_vertexCount + 2 + maskNormal);
+            indexData[_indexCount + 2] = (ushort)(_vertexCount + 2 - maskNormal);
+            indexData[_indexCount + 3] = (ushort)(_vertexCount + 3);
+            indexData[_indexCount + 4] = (ushort)(_vertexCount + 1 - maskNormal);
+            indexData[_indexCount + 5] = (ushort)(_vertexCount + 1 + maskNormal);
 
-            vertexData[_vertexIndex + 0] = bottomLeft * blockSize;
-            vertexData[_vertexIndex + 1] = bottomRight * blockSize;
-            vertexData[_vertexIndex + 2] = topLeft * blockSize;
-            vertexData[_vertexIndex + 3] = topRight * blockSize;
+            vertexData[_vertexCount + 0] = bottomLeft * blockSize;
+            vertexData[_vertexCount + 1] = bottomRight * blockSize;
+            vertexData[_vertexCount + 2] = topLeft * blockSize;
+            vertexData[_vertexCount + 3] = topRight * blockSize;
 
             Vector3 normal = axisMask * maskNormal;
-            normalData[_vertexIndex + 0] = normal;
-            normalData[_vertexIndex + 1] = normal;
-            normalData[_vertexIndex + 2] = normal;
-            normalData[_vertexIndex + 3] = normal;
+            normalData[_vertexCount + 0] = normal;
+            normalData[_vertexCount + 1] = normal;
+            normalData[_vertexCount + 2] = normal;
+            normalData[_vertexCount + 3] = normal;
 
             AddUVForSide(height, width, side, normal, (VoxelType)(mask & 0xFFFFFFFFUL), uvData);
 
-            _vertexIndex += 4;
-            _indiceIndex += 6;
+            _vertexCount += 4;
+            _indexCount += 6;
         }
 
         private void AddUVForSide(float width, float height, int side, Vector3 normal, VoxelType block,
@@ -309,17 +309,17 @@ namespace Minecraft
 
             if (normal.x != 0)
             {
-                uvData[_vertexIndex + 0] = new Vector3(0, 0, w);
-                uvData[_vertexIndex + 1] = new Vector3(width, 0, w);
-                uvData[_vertexIndex + 2] = new Vector3(0, height, w);
-                uvData[_vertexIndex + 3] = new Vector3(width, height, w);
+                uvData[_vertexCount + 0] = new Vector3(0, 0, w);
+                uvData[_vertexCount + 1] = new Vector3(width, 0, w);
+                uvData[_vertexCount + 2] = new Vector3(0, height, w);
+                uvData[_vertexCount + 3] = new Vector3(width, height, w);
             }
             else
             {
-                uvData[_vertexIndex + 0] = new Vector3(0, 0, w);
-                uvData[_vertexIndex + 1] = new Vector3(0, width, w);
-                uvData[_vertexIndex + 2] = new Vector3(height, 0, w);
-                uvData[_vertexIndex + 3] = new Vector3(height, width, w);
+                uvData[_vertexCount + 0] = new Vector3(0, 0, w);
+                uvData[_vertexCount + 1] = new Vector3(0, width, w);
+                uvData[_vertexCount + 2] = new Vector3(height, 0, w);
+                uvData[_vertexCount + 3] = new Vector3(height, width, w);
             }
         }
     }
