@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Minecraft
 {
     public sealed class BlockPlace : MonoBehaviour
     {
         [SerializeField] private Material material;
-        [SerializeField] private GameObject dinamitePrefab;
+        [FormerlySerializedAs("dinamitePrefab")] [SerializeField] private GameObject dynamitePrefab;
         [SerializeField] private int selectedType;
         [SerializeField] private VoxelType[] types;
 
@@ -73,7 +74,7 @@ namespace Minecraft
                 if (!blockBounds.Intersects(playerBounds))
                 {
                     Physics.Raycast(cRay, out RaycastHit hit);
-                    Instantiate(dinamitePrefab, hit.point, Quaternion.identity);
+                    Instantiate(dynamitePrefab, hit.point, Quaternion.identity);
                 }
             }
 
