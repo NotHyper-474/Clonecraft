@@ -31,7 +31,7 @@ namespace Minecraft
 		{
 			_chunkIndex = globalIndex;
 			Size = config.chunkSize;
-			transform.position = _chunkIndex * Size;
+			transform.position = config.blockSize * (Vector3)(_chunkIndex * Size);
 			if (Blocks == null || Blocks.Length == 0)
 				Blocks = new TerrainBlock[Size.x * Size.y * Size.z];
 			

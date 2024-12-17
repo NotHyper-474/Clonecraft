@@ -86,11 +86,14 @@ namespace Minecraft
         {
             if (Application.isPlaying)
             {
-                var pchunk = GetChunkIndexAt(_player.position);
-                pchunk.y = 0;
+                var playerChunk = GetChunkIndexAt(_player.position);
+                playerChunk.y = 0;
+                
                 var scaledChunkSize = (Vector3)config.chunkSize * config.blockSize;
-                Gizmos.DrawWireCube(Vector3.Scale(pchunk, scaledChunkSize) + scaledChunkSize / 2 - 0.5f * Vector3.one,
-                    scaledChunkSize);
+                var center = Vector3.Scale(playerChunk, scaledChunkSize) + scaledChunkSize * 0.5f;
+                center -= 0.5f * Vector3.one;
+                
+                Gizmos.DrawWireCube(center, scaledChunkSize);
             }
         }
 
@@ -142,6 +145,7 @@ namespace Minecraft
                 });
             }
         }
+
         private IEnumerable<Vector3Int> ChunksAroundChunk(Vector3Int chunkIndex)
         {
             for (int i = 1; i <= (int)renderDistance; i++)

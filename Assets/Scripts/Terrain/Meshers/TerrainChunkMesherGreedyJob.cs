@@ -167,8 +167,8 @@ namespace Minecraft
                                 var dv = new int3();
                                 dv[v] = h;
 
-                                var blockMinVertex = new float3(-blockSize * 0.5f, -blockSize * 0.5f,
-                                    -blockSize * 0.5f);
+                                var blockMinVertex = new float3(-0.5f, -0.5f,
+                                    -0.5f);
 
                                 side = d switch
                                 {
@@ -178,11 +178,16 @@ namespace Minecraft
                                     _ => side
                                 };
 
+                                float3 bottomLeft = blockSize * (float3)x;
+                                float3 topLeft = blockSize * (float3)(x + du);
+                                float3 topRight = blockSize * (float3)(x + du + dv);
+                                float3 bottomRight = blockSize * (float3)(x + dv);
+
                                 CreateQuad(
-                                    blockMinVertex + x,
-                                    blockMinVertex + x + du,
-                                    blockMinVertex + x + du + dv,
-                                    blockMinVertex + x + dv,
+                                    blockMinVertex + bottomLeft,
+                                    blockMinVertex + topLeft,
+                                    blockMinVertex + topRight,
+                                    blockMinVertex + bottomRight,
                                     w,
                                     h,
                                     new Vector3(q.x, q.y, q.z),
@@ -196,9 +201,11 @@ namespace Minecraft
 
                                 // Clear this part of the mask, so we don't add duplicate faces
                                 for (int l = 0; l < h; ++l)
-                                for (int k = 0; k < w; ++k)
                                 {
-                                    mask[n + k + l * chunkSize[u]] = emptyBlock;
+                                    for (int k = 0; k < w; ++k)
+                                    {
+                                        mask[n + k + l * chunkSize[u]] = emptyBlock;
+                                    }
                                 }
 
                                 // Increment counters by width of the quad and continue
@@ -257,10 +264,10 @@ namespace Minecraft
             indexData[_indexCount + 4] = (ushort)(_vertexCount + 1 - maskNormal);
             indexData[_indexCount + 5] = (ushort)(_vertexCount + 1 + maskNormal);
 
-            vertexData[_vertexCount + 0] = bottomLeft * blockSize;
-            vertexData[_vertexCount + 1] = bottomRight * blockSize;
-            vertexData[_vertexCount + 2] = topLeft * blockSize;
-            vertexData[_vertexCount + 3] = topRight * blockSize;
+            vertexData[_vertexCount + 0] = bottomLeft;
+            vertexData[_vertexCount + 1] = bottomRight;
+            vertexData[_vertexCount + 2] = topLeft;
+            vertexData[_vertexCount + 3] = topRight;
 
             Vector3 normal = axisMask * maskNormal;
             normalData[_vertexCount + 0] = normal;
