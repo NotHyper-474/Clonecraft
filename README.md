@@ -12,7 +12,7 @@ Project version: 6000.0.29f1 LTS
 [Cleo Hayes' (formely Rob O'Leary) greedy mesh implementation](https://github.com/roboleary/GreedyMesh)
 
 #
-### TODO list (not necessarily in order)
+### TODO list (in no particular order)
 - [X] Add greedy meshing
 - [ ] Fix BlockPlacer
 - [X] Add proper texturing
