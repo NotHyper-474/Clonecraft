@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Runtime.CompilerServices;
+using UnityEngine;
 using Unity.Mathematics;
 
 public static class MathUtils
@@ -11,7 +12,8 @@ public static class MathUtils
 	/// <param name="z"></param>
 	/// <param name="xMax"></param>
 	/// <param name="yMax"></param>
-	/// <returns>1D index calulation</returns>
+	/// <returns>1D index calculation</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static int To1D(int x, int y, int z, int xMax, int yMax)
 	{
 		//return (z * xMax * yMax) + (y * xMax) + x;
@@ -23,7 +25,9 @@ public static class MathUtils
 	/// </summary>
 	/// <param name="x"></param>
 	/// <param name="y"></param>
-	/// <returns>1D index calulation</returns>
+	/// <param name="width"></param>
+	/// <returns>1D index calculation</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static int To1D(int x, int y, int width)
 	{
 		return y * width + x;
@@ -39,46 +43,32 @@ public static class MathUtils
 	public static Vector3Int To3D(int index, int xMax, int yMax)
 	{
 		int z = index / (xMax * yMax);
-		int idx = index - (z * xMax * yMax);
+		int idx = index - z * xMax * yMax;
 		int y = idx / xMax;
 		int x = idx % xMax;
 		return new Vector3Int(x, y, z);
 	}
 
-	[System.Obsolete("Just use Vector3Int.FloorToInt instead")]
-	public static Vector3Int FloorToInt3D(Vector3 v)
+	public static Vector3Int WrapIndex(Vector3Int position, Vector3Int size)
 	{
 		return new Vector3Int(
-			Mathf.FloorToInt(v.x),
-			Mathf.FloorToInt(v.y),
-			Mathf.FloorToInt(v.z)
-			);
+			(position.x % size.x + size.x) % size.x,
+			(position.y % size.y + size.y) % size.y,
+			(position.z % size.z + size.z) % size.z
+		);
 	}
 
-	public static Vector3Int FloorToInt3D(float x, float y, float z)
+	public static Vector3Int GetNextChunkIndex(Vector3Int blockIndex, Vector3Int chunkPosition, Vector3Int chunkSize)
 	{
-		return new Vector3Int(
-			Mathf.FloorToInt(x),
-			Mathf.FloorToInt(y),
-			Mathf.FloorToInt(z)
-			);
-	}
+		var result = chunkPosition;
+		if (blockIndex.x >= chunkSize.x) result.x += 1;
+		else if (blockIndex.x < 0) result.x -= 1;
+		
+		// TODO: Is Y necessary?
+		
+		if (blockIndex.z >= chunkSize.z) result.z += 1;
+		else if (blockIndex.z < 0) result.z -= 1;
 
-	[System.Obsolete("Just use Vector3Int.CeilToInt instead")]
-	public static Vector3Int CeilToInt3D(Vector3 v)
-	{
-		return new Vector3Int(
-			Mathf.CeilToInt(v.x),
-			Mathf.CeilToInt(v.y),
-			Mathf.CeilToInt(v.z)
-			);
-	}
-	public static Vector3Int CeilToInt3D(float x, float y, float z)
-	{
-		return new Vector3Int(
-			Mathf.CeilToInt(x),
-			Mathf.CeilToInt(y),
-			Mathf.CeilToInt(z)
-			);
+		return result;
 	}
 }

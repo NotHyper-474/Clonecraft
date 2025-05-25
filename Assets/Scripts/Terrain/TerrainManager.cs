@@ -222,9 +222,16 @@ namespace Minecraft
 
             if (!chunk) chunk = _chunkGenerator.GetOrGenerateChunk(chunkIndex, transform);
 
-            return chunk.GetBlock(
-                Vector3Int.FloorToInt(worldPoint - (chunk.Index * chunk.Size) + 0.5f * Vector3.one)
-            ).GetValueOrDefault();
+            var blockIndex = Vector3Int.FloorToInt(worldPoint - chunk.Index * chunk.Size + 0.5f * Vector3.one);
+            var block = chunk.GetBlock(blockIndex);
+            if (!block.HasValue)
+            {
+                var neighbourIndex = MathUtils.GetNextChunkIndex(blockIndex, chunkIndex, config.chunkSize);
+                blockIndex = MathUtils.WrapIndex(blockIndex, chunk.Size);
+                chunk = chunksPool.GetChunk(neighbourIndex);
+            }
+
+            return chunk.GetBlock(blockIndex).GetValueOrDefault();
         }
 
         public TerrainBlock GetBlockAt(Vector3 worldPoint)
