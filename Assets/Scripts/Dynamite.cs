@@ -11,17 +11,23 @@ namespace Minecraft
 		
 		private bool _triggered;
 
-		private async Task OnCollisionEnter(Collision _)
+		private async void OnCollisionEnter(Collision _)
 		{
 			if (_triggered) return;
 			_triggered = true;
 			await Task.Delay(3000);
-			Stack<TerrainChunk> chunksToRegenerate = new Stack<TerrainChunk>();
-			foreach (var (chunk, block) in GetBlocksInSphere(transform.position, explosionRadius))
+			var chunksToRegenerate = new Stack<TerrainChunk>();
+			
+			foreach (var (chunk, blocks) in GetBlocksInSphere(transform.position, explosionRadius))
 			{
-				chunk.SetBlockType(block.index, VoxelType.Air);
+				for (var i = 0; i < blocks.Count; i++)
+				{
+					chunk.SetBlockType(blocks[i].index, VoxelType.Air);
+				}
+
 				chunksToRegenerate.Push(chunk);
 			}
+			
 			// We cannot destroy it yet or else nearby chunks won't regenerate their mesh
 			gameObject.SetActive(false);
 			while (chunksToRegenerate.Count > 0)
@@ -34,7 +40,7 @@ namespace Minecraft
 			Destroy(gameObject);
 		}
 		
-		private IEnumerable<Tuple<TerrainChunk, TerrainBlock>> GetBlocksInSphere(Vector3 sphereCenter, float radius)
+		private static Dictionary<TerrainChunk, List<TerrainBlock>> GetBlocksInSphere(Vector3 sphereCenter, float radius)
 		{
 			Vector3 minPoint = sphereCenter - Vector3.one * radius;
 			Vector3 maxPoint = sphereCenter + Vector3.one * radius;
@@ -43,7 +49,7 @@ namespace Minecraft
 			Vector3Int maxIndex = Vector3Int.FloorToInt(maxPoint);
 
 			float sphereRadius2 = radius * radius;
-
+			var result = new Dictionary<TerrainChunk, List<TerrainBlock>>();
 			for (int x = minIndex.x; x <= maxIndex.x; x++)
 			{
 				for (int y = minIndex.y; y <= maxIndex.y; y++)
@@ -54,14 +60,14 @@ namespace Minecraft
 						float dis = Vector3.SqrMagnitude(blockCenter - sphereCenter);
 						if (dis > sphereRadius2) continue;
 
-						var block = TerrainManager.Instance.GetBlockAt(blockCenter, out TerrainChunk chunk);
-						if (!block.IsEmpty())
-						{
-							yield return new Tuple<TerrainChunk, TerrainBlock>(chunk, block);
-						}
+						var block = TerrainManager.Instance.GetBlockAt(blockCenter, out var chunk);
+						if (block.IsEmpty()) continue;
+						if (!result.ContainsKey(chunk)) result.Add(chunk, new List<TerrainBlock>());
+						result[chunk].Add(block);
 					}
 				}
 			}
+			return result;
 		}
 	}
 }
