@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace Minecraft
@@ -38,6 +37,7 @@ namespace Minecraft
 				var chunk = GetChunk(chunkIndex);
 				if (!chunk) continue;
 				chunk.gameObject.SetActive(false);
+				chunk.meshRenderer.enabled = false;
 				deactivatedChunks.Enqueue(chunk);
 			}
 		}
@@ -59,7 +59,7 @@ namespace Minecraft
 			
 			deactivatedChunks.Clear();
 		}
-
+		
 		public TerrainChunk GetChunk(Vector3Int chunkIndex)
 		{
 			return currentChunks.GetValueOrDefault(chunkIndex, null);

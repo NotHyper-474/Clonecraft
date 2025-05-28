@@ -1,14 +1,16 @@
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine.Rendering;
 using UnityEngine;
+using static System.Diagnostics.Stopwatch;
 
 namespace Minecraft
 {
     [CreateAssetMenu(menuName = "Clonecraft/Meshers/Greedy", fileName = "Greedy Mesher")]
     public sealed class TerrainChunkMesherGreedy : TerrainChunkMesherBase
     {
+        [SerializeField] private bool showTimings = true;
+        
         private TerrainChunkMesherGreedyJob _job;
 
         public override void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors = null)
@@ -19,6 +21,8 @@ namespace Minecraft
                 mesh = new Mesh();
             }
 
+
+            var sw = StartNew();
             var meshArray = Mesh.AllocateWritableMeshData(mesh);
             _job.mesh = meshArray[0];
             _job.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
@@ -32,6 +36,11 @@ namespace Minecraft
             chunk.SetMesh(mesh, null);
 
             _job.voxels.Dispose();
+            
+            sw.Stop();
+            
+            if (showTimings)
+                Debug.Log("Elapsed ms: " + sw.Elapsed.TotalMilliseconds);
         }
     }
 }

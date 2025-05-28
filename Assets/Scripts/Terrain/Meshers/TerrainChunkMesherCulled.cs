@@ -8,7 +8,8 @@ namespace Minecraft
 	{
 		private readonly List<Vector3> _vertices = new();
 		private readonly List<int> _triangles = new();
-
+		private readonly List<Vector3> _uvs = new();
+		
 		private readonly Vector3Int[] _sideLookup = {
 			Vector3Int.left, // West
 			Vector3Int.right , // East
@@ -32,13 +33,14 @@ namespace Minecraft
 					var blockAtSide = chunk.GetBlock(nextIndex);
 					if (!blockAtSide.HasValue && neighbours != null && neighbours.Length != 0)
 					{
-						nextIndex += chunk.Index;
+						nextIndex += chunk.Index * chunk.Size;
 						var adjChunkIdx = TerrainManager.Instance.GetChunkIndexAt(nextIndex);
 						foreach (var chk in neighbours)
 						{
+							//Debug.Log(chk.Index + ", " + adjChunkIdx);
 							if (chk.Index == adjChunkIdx)
 							{
-								blockAtSide = chk.GetBlock(nextIndex - chunk.Index);
+								blockAtSide = chk.GetBlock(MathUtils.WrapIndex(nextIndex - chunk.Index * chunk.Size, chunk.Size));
 							}
 						}
 					}
@@ -52,11 +54,13 @@ namespace Minecraft
 				vertices = _vertices.ToArray(),
 				triangles = _triangles.ToArray()
 			};
+			mesh.SetUVs(0, _uvs);
 			mesh.RecalculateNormals();
 
 			chunk.SetMesh(mesh, null);
 			_vertices.Clear();
 			_triangles.Clear();
+			_uvs.Clear();
 		}
 
 		private void AddFace(Vector3Int position, Vector3Int faceNormal)
@@ -88,6 +92,10 @@ namespace Minecraft
 			_vertices.AddRange(face);
 
 			// TODO: Add UVs
+			_uvs.Add(new Vector3(0, 0, 13));
+			_uvs.Add(new Vector3(1, 0, 13));
+			_uvs.Add(new Vector3(0, 1, 13));
+			_uvs.Add(new Vector3(1, 1, 13));
 		}
 	}
 }

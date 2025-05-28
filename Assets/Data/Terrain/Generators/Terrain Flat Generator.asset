@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26824113577325c4cbf7c1032aa9c53e, type: 3}
   m_Name: Terrain Flat Generator
   m_EditorClassIdentifier: 
-  landHeight: 4
   layers:
   - height: 1
     blockType: 3

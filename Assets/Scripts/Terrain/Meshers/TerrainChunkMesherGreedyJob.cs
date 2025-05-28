@@ -42,8 +42,8 @@ namespace Minecraft
         /// </summary>
         public void Execute()
         {
-            var estimateVertices = chunkSize.x * chunkSize.y * chunkSize.z * 4;
-            var estimateIndexes = chunkSize.x * chunkSize.y * chunkSize.z * 6;
+            var estimateVertices = chunkSize.x * chunkSize.y * chunkSize.z / 2 * 4;
+            var estimateIndexes = chunkSize.x * chunkSize.y * chunkSize.z / 2 * 6;
 
             NativeArray<VertexAttributeDescriptor> attributes = new(3, Allocator.Temp,
                 NativeArrayOptions.UninitializedMemory);
@@ -53,17 +53,17 @@ namespace Minecraft
             mesh.SetVertexBufferParams(estimateVertices, attributes);
             mesh.SetIndexBufferParams(estimateIndexes, IndexFormat.UInt16);
 
-            var vertexData = mesh.GetVertexData<Vector3>();
-            var normalData = mesh.GetVertexData<Vector3>(stream: 1);
-            var uvData = mesh.GetVertexData<Vector3>(stream: 2);
+            var vertexData = mesh.GetVertexData<float3>();
+            var normalData = mesh.GetVertexData<float3>(stream: 1);
+            var uvData = mesh.GetVertexData<float3>(stream: 2);
             var indexData = mesh.GetIndexData<ushort>();
 
-            // Cycle through all 3 axis
+            // Cycle through all 3 axes
             for (int d = 0; d < 3; d++)
             {
                 bool backFace = false;
-                int u = (d + 1) % 3; // Which axis of the slice to cycle through
-                int v = (d + 2) % 3;
+                int u = (d + 1) % 3; // Which axis of the slice to cycle through, "horizontally"
+                int v = (d + 2) % 3; // Which axis of the slice to cycle through, "vertically"
                 var x = new int3();
                 var q = new int3();
                 int side = 0;
@@ -86,11 +86,11 @@ namespace Minecraft
                             // q determines the direction (X, Y or Z) that we are searching
                             int min = 0; //q.y != 0 ? 0 : -1;
                             int max = chunkSize[d] - 1; //q.y != 0 ? chunkSize[d] - 1 : chunkSize[d]; 
-                            var blockCurrent = (x[d] >= min) ? GetVoxel(x) : default;
-                            var blockCompare = (x[d] < max) ? GetVoxel(x + q) : default;
+                            var blockCurrent = (x[d] >= min) ? GetVoxel(x) : VoxelType.Air;
+                            var blockCompare = (x[d] < max) ? GetVoxel(x + q) : VoxelType.Air;
 
-                            bool bCurrentOpaque = blockCurrent != default;
-                            bool bCompareOpaque = blockCompare != default;
+                            bool bCurrentOpaque = blockCurrent != VoxelType.Air;
+                            bool bCompareOpaque = blockCompare != VoxelType.Air;
 
                             if (bCurrentOpaque == bCompareOpaque)
                                 mask[n++] = emptyBlock;
@@ -100,7 +100,6 @@ namespace Minecraft
                                 mask[n] = 0;
                                 mask[n] |= (2 & 0x3UL) << 32;
                                 mask[n++] |= (ulong)blockCurrent & 0xFFFFFFFFUL;
-
                                 backFace = false;
                             }
                             else
@@ -118,7 +117,7 @@ namespace Minecraft
 
                     n = 0;
 
-                    // Generate a mesh from the mask using lexicographic ordering,      
+                    // Generate a mesh from the mask using lexicographic ordering,
                     // by looping over each face in this slice of the chunk
                     for (int j = 0; j < chunkSize[v]; j++)
                     {
@@ -126,15 +125,15 @@ namespace Minecraft
                         {
                             if (mask[n] != emptyBlock)
                             {
-                                // Compute the width of this quad and store it in w                        
-                                //   This is done by searching along the current axis until mask[n + w] is false
+                                // Compute the width of this quad and store it in w
+                                // This is done by searching along the current axis until mask[n + w] is false
                                 int w = 1;
                                 int h = 1;
                                 for (; i + w < chunkSize[u] && mask[n + w].Equals(mask[n]); w++)
                                 {
                                 }
 
-                                // Compute the height of this quad and store it in h                        
+                                //   Compute the height of this quad and store it in h
                                 //   This is done by checking if every block next to this row (range 0 to w) is also part of the mask.
                                 //   For example, if w is 5 we currently have a quad of dimensions 1 x 5. To reduce triangle count,
                                 //   greedy meshing will attempt to expand this quad out to CHUNK_SIZE x 5, but will stop if it reaches a hole (or different block) in the mask
@@ -222,7 +221,7 @@ namespace Minecraft
                 }
             }
 
-            /* I don't like how this needs to be done twice, the mesh will still work with the estimated size
+            /* I don't like how this needs to be done twice; the mesh will still work with the estimated size,
              however it'll use more memory. Maybe dynamically resize the arrays when needed or use a NativeList
              like before to be copied to the mesh's vertex data?
              */
@@ -247,12 +246,12 @@ namespace Minecraft
             float3 bottomRight,
             float width,
             float height,
-            Vector3 axisMask,
+            float3 axisMask,
             ulong mask,
             int side,
-            NativeArray<Vector3> vertexData,
-            NativeArray<Vector3> normalData,
-            NativeArray<Vector3> uvData,
+            NativeArray<float3> vertexData,
+            NativeArray<float3> normalData,
+            NativeArray<float3> uvData,
             NativeArray<ushort> indexData
         )
         {
@@ -269,7 +268,7 @@ namespace Minecraft
             vertexData[_vertexCount + 2] = topLeft;
             vertexData[_vertexCount + 3] = topRight;
 
-            Vector3 normal = axisMask * maskNormal;
+            float3 normal = axisMask * maskNormal;
             normalData[_vertexCount + 0] = normal;
             normalData[_vertexCount + 1] = normal;
             normalData[_vertexCount + 2] = normal;
@@ -281,8 +280,8 @@ namespace Minecraft
             _indexCount += 6;
         }
 
-        private void AddUVForSide(float width, float height, int side, Vector3 normal, VoxelType block,
-            NativeArray<Vector3> uvData)
+        private void AddUVForSide(float width, float height, int side, float3 normal, VoxelType block,
+            NativeArray<float3> uvData)
         {
             // TODO: Softcode this
             int w = 0;
@@ -316,17 +315,17 @@ namespace Minecraft
 
             if (normal.x != 0)
             {
-                uvData[_vertexCount + 0] = new Vector3(0, 0, w);
-                uvData[_vertexCount + 1] = new Vector3(width, 0, w);
-                uvData[_vertexCount + 2] = new Vector3(0, height, w);
-                uvData[_vertexCount + 3] = new Vector3(width, height, w);
+                uvData[_vertexCount + 0] = new float3(0, 0, w);
+                uvData[_vertexCount + 1] = new float3(width, 0, w);
+                uvData[_vertexCount + 2] = new float3(0, height, w);
+                uvData[_vertexCount + 3] = new float3(width, height, w);
             }
             else
             {
-                uvData[_vertexCount + 0] = new Vector3(0, 0, w);
-                uvData[_vertexCount + 1] = new Vector3(0, width, w);
-                uvData[_vertexCount + 2] = new Vector3(height, 0, w);
-                uvData[_vertexCount + 3] = new Vector3(height, width, w);
+                uvData[_vertexCount + 0] = new float3(0, 0, w);
+                uvData[_vertexCount + 1] = new float3(0, width, w);
+                uvData[_vertexCount + 2] = new float3(height, 0, w);
+                uvData[_vertexCount + 3] = new float3(height, width, w);
             }
         }
     }

@@ -52,6 +52,7 @@ namespace Minecraft
 			ChunkMesh = meshFilter.mesh = mesh;
 			
 			if (meshCollider) meshCollider.sharedMesh = mesh;
+			meshRenderer.enabled = true;
 			if (!material) return;
 			meshRenderer.material = material;
 		}

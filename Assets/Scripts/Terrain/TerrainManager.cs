@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Serialization;
-using Debug = UnityEngine.Debug;
 using ThreadPriority = UnityEngine.ThreadPriority;
 
 namespace Minecraft
@@ -56,7 +52,7 @@ namespace Minecraft
             if (!int.TryParse(seed, out int numSeed))
                 numSeed = seed.GetHashCode();
 
-            Debug.Assert(terrainGenerator != null);
+            Debug.Assert(terrainGenerator);
             terrainGenerator.SetSeed(numSeed);
 
             _player = playerPrefab.transform;
@@ -84,17 +80,15 @@ namespace Minecraft
 
         private void OnDrawGizmos()
         {
-            if (Application.isPlaying)
-            {
-                var playerChunk = GetChunkIndexAt(_player.position);
-                playerChunk.y = 0;
+            if (!Application.isPlaying) return;
+            var playerChunk = GetChunkIndexAt(_player.position);
+            playerChunk.y = 0;
                 
-                var scaledChunkSize = (Vector3)config.chunkSize * config.blockSize;
-                var center = Vector3.Scale(playerChunk, scaledChunkSize) + scaledChunkSize * 0.5f;
-                center -= 0.5f * Vector3.one;
+            var scaledChunkSize = (Vector3)config.chunkSize * config.blockSize;
+            var center = Vector3.Scale(playerChunk, scaledChunkSize) + scaledChunkSize * 0.5f;
+            center -= 0.5f * Vector3.one;
                 
-                Gizmos.DrawWireCube(center, scaledChunkSize);
-            }
+            Gizmos.DrawWireCube(center, scaledChunkSize);
         }
 
         private void OnGUI()
@@ -109,7 +103,7 @@ namespace Minecraft
         {
             if (_prevRenderDistance != renderDistance && renderDistance != 0)
             {
-                chunksPool.Deactivate(_currentChunks.Where((i => i != _playerChunk)));
+                chunksPool.Deactivate(_currentChunks.Where(i => i != _playerChunk));
                 _currentChunks.Clear();
                 _forceUpdate = true;
                 _updatingTerrain = false;
@@ -162,12 +156,39 @@ namespace Minecraft
 
         private async Task GenerateChunks(IEnumerable<Vector3Int> chunksToCreate)
         {
+            Queue<TerrainChunk> chunks = new(chunksToCreate.Count());
             foreach (var chunkIndex in chunksToCreate)
             {
                 var newChunk = _chunkGenerator.InstantiateAndSetup(chunkIndex, transform);
                 terrainGenerator.GenerateBlocksFor(newChunk);
-                // TODO: Neighbour chunks
-                chunkMesher.GenerateMeshFor(newChunk);
+                chunks.Enqueue(newChunk);
+                await Task.Yield();
+            }
+
+            await MeshChunks(chunks);
+        }
+
+        private async Task MeshChunks(Queue<TerrainChunk> chunksToMesh)
+        {
+            var dirsToCheck = new[]
+            {
+                Vector3Int.left,
+                Vector3Int.right,
+                Vector3Int.forward,
+                Vector3Int.back
+            };
+
+            while (chunksToMesh.Count > 0)
+            {
+                var chunkToMesh = chunksToMesh.Dequeue();
+                var neighbours = new TerrainChunk[dirsToCheck.Length];
+                for (var i = 0; i < dirsToCheck.Length; i++)
+                {
+                    var neighbour = _chunkGenerator.GetOrGenerateChunk(chunkToMesh.Index + dirsToCheck[i], transform);
+                    neighbours[i] = neighbour;
+                }
+
+                chunkMesher.GenerateMeshFor(chunkToMesh, neighbours);
                 await Task.Yield();
             }
         }
@@ -255,7 +276,7 @@ namespace Minecraft
                 pointInWorld.x / config.chunkSize.x,
                 pointInWorld.y / config.chunkSize.y,
                 pointInWorld.z / config.chunkSize.z
-            ));
+            ) / config.blockSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

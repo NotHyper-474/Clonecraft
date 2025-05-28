@@ -14,17 +14,17 @@ public class PlayerFPSController : MonoBehaviour
     private Vector2 input;
     private bool isGrounded;
     private bool jump;
+    private float jumpCooldown;
     private float verticalVelocity;
     private bool toChunk;
-    private float jumpCooldown;
 
     // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
         Controller = GetComponent<CharacterController>();
     }
 
-    void LateUpdate()
+    private void LateUpdate()
     {
         if (toChunk) return;
         if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hit))
@@ -36,7 +36,7 @@ public class PlayerFPSController : MonoBehaviour
         }
     }
 
-    void Update()
+    private void Update()
     {
         float hor = Input.GetAxis("Horizontal");
         float ver = Input.GetAxis("Vertical");
@@ -46,8 +46,9 @@ public class PlayerFPSController : MonoBehaviour
         if (Input.GetButtonDown("Jump")) jump = true;
     }
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
+        if (!toChunk) return;
         Vector3 moveAxis = transform.right * input.x + transform.forward * input.y;
 
         // apply gravity always, to let us track down ramps properly
