@@ -1,6 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class FPSCamera : MonoBehaviour
 {
@@ -9,20 +8,28 @@ public class FPSCamera : MonoBehaviour
 	[SerializeField] private float m_MinPitch = -90f;
 	[SerializeField] private float m_MaxPitch = 90f;
 	[SerializeField] private bool m_LockMouse = true;
+	[SerializeField] private bool m_InvertY = true;
 	
 	private Vector3 eulerRot;
+
+	private InputAction _lookAction;
+	private InputAction _cancelAction;
 	
     // Start is called before the first frame update
     void Start()
     {
 		Screen.lockCursor = m_LockMouse;
+		_lookAction = InputSystem.actions.FindAction("Look");
+		_cancelAction = InputSystem.actions.FindAction("Cancel");
 	}
 
     // Update is called once per frame
     void Update()
     {
-        float yaw = Input.GetAxisRaw("Mouse X") * m_Sensitivity;
-		float pitch = -Input.GetAxisRaw("Mouse Y") * m_Sensitivity;
+	    var input = _lookAction.ReadValue<Vector2>();
+        float yaw = input.x * m_Sensitivity;
+		float pitch = input.y * m_Sensitivity;
+		if (m_InvertY) pitch = -pitch;
 		
 		eulerRot.x += pitch;
 		eulerRot.x = Mathf.Clamp(eulerRot.x, m_MinPitch, m_MaxPitch);

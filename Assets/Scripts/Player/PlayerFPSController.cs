@@ -1,5 +1,6 @@
 using Minecraft;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerFPSController : MonoBehaviour
@@ -18,10 +19,17 @@ public class PlayerFPSController : MonoBehaviour
     private float verticalVelocity;
     private bool toChunk;
 
+    private InputAction _moveAction;
+    private InputAction _jumpAction;
+    private InputAction _sprintAction;
+
     // Start is called before the first frame update
     private void Start()
     {
         Controller = GetComponent<CharacterController>();
+        _moveAction = InputSystem.actions.FindAction("Move");
+        _sprintAction = InputSystem.actions.FindAction("Sprint");
+        _jumpAction = InputSystem.actions.FindAction("Jump");
     }
 
     private void LateUpdate()
@@ -38,12 +46,9 @@ public class PlayerFPSController : MonoBehaviour
 
     private void Update()
     {
-        float hor = Input.GetAxis("Horizontal");
-        float ver = Input.GetAxis("Vertical");
-        var spd = Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-        input.x = hor * spd;
-        input.y = ver * spd;
-        if (Input.GetButtonDown("Jump")) jump = true;
+        var spd = _sprintAction.IsPressed() ? runSpeed : walkSpeed;
+        input = _moveAction.ReadValue<Vector2>() * spd;
+        if (_jumpAction.WasPressedThisFrame()) jump = true;
     }
 
     private void FixedUpdate()
@@ -52,7 +57,6 @@ public class PlayerFPSController : MonoBehaviour
         Vector3 moveAxis = transform.right * input.x + transform.forward * input.y;
 
         // apply gravity always, to let us track down ramps properly
-
         isGrounded = Controller.isGrounded;
         if (isGrounded)
             verticalVelocity = -1f;

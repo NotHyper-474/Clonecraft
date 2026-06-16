@@ -1,39 +1,44 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
+using UnityEngine.InputSystem;
 
 namespace Minecraft
 {
     public sealed class BlockPlace : MonoBehaviour
     {
         [SerializeField] private Material material;
-        [FormerlySerializedAs("dinamitePrefab")] [SerializeField] private GameObject dynamitePrefab;
+        [SerializeField] private GameObject dynamitePrefab;
         [SerializeField] private int selectedType;
         [SerializeField] private VoxelType[] types;
 
         private BlockFace? _blockFace;
         private PlayerFPSController _playerController;
+        private InputAction _attackAction;
+        private InputAction _useAction;
+        private InputAction _previousAction;
+        private InputAction _nextAction;
 
-        // Start is called before the first frame update
         private void Start()
         {
             _playerController = transform.root.GetComponent<PlayerFPSController>();
+            _attackAction = InputSystem.actions.FindAction("Attack");
+            _useAction = InputSystem.actions.FindAction("Use");
+            _previousAction = InputSystem.actions.FindAction("Previous");
+            _nextAction = InputSystem.actions.FindAction("Next");
         }
 
-        /*private void OnGUI()
+        private void OnGUI()
         {
-            GUI.Label(new Rect(5f, 35f, 200f, 25f), "Selected BT: " + System.Enum.GetName(typeof(BlockType), type));
-            GUI.Label(new Rect(5f, 50f, 250f, 25f), "SBT BlockFace Position: " + type.GetValueOrDefault().globalIndex);
-        }*/
+            GUI.Label(new Rect(5f, 35f, 200f, 25f), "Selected Block Type: " + System.Enum.GetName(typeof(VoxelType), types[selectedType]));
+        }
 
-        // Update is called once per frame
         private void Update()
         {
-            if (Input.GetAxisRaw("Mouse ScrollWheel") > 0f)
+            if (_previousAction.WasPerformedThisFrame())
             {
                 selectedType--;
             }
-            else if (Input.GetAxisRaw("Mouse ScrollWheel") < 0f)
+            else if (_nextAction.WasPerformedThisFrame())
             {
                 selectedType++;
             }
@@ -43,13 +48,10 @@ namespace Minecraft
             _blockFace = null;
 
             Ray cRay = new Ray(transform.position, transform.forward);
-
             var pointOnTerrain = TerrainManager.Instance.RaycastTerrainMesh(cRay, TerrainManager.Instance.RayOffset);
-
             if (pointOnTerrain == null) return;
 
             var block = TerrainManager.Instance.GetBlockAt(pointOnTerrain.Point);
-
             if (block.type == VoxelType.Air) return;
 
             Debug.DrawLine(transform.position + Vector3.up * 0.3f, pointOnTerrain.Point, Color.green);
@@ -58,20 +60,19 @@ namespace Minecraft
             Bounds playerBounds = _playerController.Controller.bounds;
             playerBounds.Expand(new Vector3(0f, 1f, 0f));
 
-            if (Input.GetMouseButtonDown(0))
+            if (_attackAction.WasPressedThisFrame())
             {
                 TerrainManager.Instance.RemoveBlock(cRay);
             }
-            if (Input.GetMouseButtonDown(1))
+
+            if (!blockBounds.Intersects(playerBounds))
             {
-                if (!blockBounds.Intersects(playerBounds))
+                if (_useAction.WasPressedThisFrame())
                 {
                     TerrainManager.Instance.AddBlock(cRay, types[selectedType]);
                 }
-            }
-            if (Input.GetMouseButtonDown(2) || Input.GetKeyDown(KeyCode.Alpha3))
-            {
-                if (!blockBounds.Intersects(playerBounds))
+                
+                if (Mouse.current.middleButton.wasPressedThisFrame || Keyboard.current.digit3Key.wasPressedThisFrame)
                 {
                     Physics.Raycast(cRay, out RaycastHit hit);
                     Instantiate(dynamitePrefab, hit.point, Quaternion.identity);
@@ -91,11 +92,9 @@ namespace Minecraft
 
         private void OnPostRender()
         {
-            if (_blockFace != null)
-            {
-                var faceVertices = GetFaceVertices(_blockFace.Value);
-                DrawFace(faceVertices);
-            }
+            if (_blockFace == null) return;
+            var faceVertices = GetFaceVertices(_blockFace.Value);
+            DrawFace(faceVertices);
         }
 
         private static IEnumerable<Vector3> GetFaceVertices(BlockFace face)
