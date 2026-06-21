@@ -1,15 +1,41 @@
 ﻿using UnityEngine;
 using Unity.Collections;
 using Unity.Mathematics;
-using Unity.Jobs;
 using Unity.Burst;
+using Unity.Jobs;
 using System.Runtime.CompilerServices;
 using UnityEngine.Rendering;
 
 namespace Minecraft
 {
+    internal struct MeshData
+    {
+        // TODO: Could definitely benefit from vertex packing
+        public NativeList<float3> vertexData;
+        public NativeList<ushort> indexData;
+        public NativeList<float3> normalData;
+        public NativeList<float3> uvData;
+
+        public void Initialize(Allocator allocator = Allocator.TempJob)
+        {
+            // Use provided allocator (default to TempJob) when used inside a job
+            vertexData = new NativeList<float3>(0, allocator);
+            indexData = new NativeList<ushort>(0, allocator);
+            normalData = new NativeList<float3>(0, allocator);
+            uvData = new NativeList<float3>(0, allocator);
+        }
+
+        public void Dispose()
+        {
+            vertexData.Dispose();
+            indexData.Dispose();
+            normalData.Dispose();
+            uvData.Dispose();
+        }
+    }
+    
     [BurstCompile]
-    public struct TerrainChunkMesherGreedyJob : IJob
+    public struct TerrainChunkMesherGreedyJob : ITerrainMesherJob
     {
         public Mesh.MeshData mesh;
 
@@ -38,25 +64,15 @@ namespace Minecraft
         }
 
         /// <summary>
-        /// * Mostly based on a Greedy Meshing algorithm by Mikola Lysenko and code based on Cleo McCoy (formely Rob O'Leary)
+        /// * Mostly based on a Greedy Meshing algorithm by Mikola Lysenko and code based on Cleo McCoy (formerly Rob O'Leary)
         /// </summary>
         public void Execute()
         {
-            var estimateVertices = chunkSize.x * chunkSize.y * chunkSize.z / 2 * 4;
-            var estimateIndexes = chunkSize.x * chunkSize.y * chunkSize.z / 2 * 6;
+            _vertexCount = 0;
+            _indexCount = 0;
 
-            NativeArray<VertexAttributeDescriptor> attributes = new(3, Allocator.Temp,
-                NativeArrayOptions.UninitializedMemory);
-            attributes[0] = new VertexAttributeDescriptor(VertexAttribute.Position);
-            attributes[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, stream: 1);
-            attributes[2] = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, dimension: 3, stream: 2);
-            mesh.SetVertexBufferParams(estimateVertices, attributes);
-            mesh.SetIndexBufferParams(estimateIndexes, IndexFormat.UInt16);
-
-            var vertexData = mesh.GetVertexData<float3>();
-            var normalData = mesh.GetVertexData<float3>(stream: 1);
-            var uvData = mesh.GetVertexData<float3>(stream: 2);
-            var indexData = mesh.GetIndexData<ushort>();
+            var meshData = new MeshData();
+            meshData.Initialize();
 
             // Cycle through all 3 axes
             for (int d = 0; d < 3; d++)
@@ -145,8 +161,7 @@ namespace Minecraft
                                     for (int k = 0; k < w; ++k)
                                     {
                                         // If there's a hole in the mask, or it is not equal to the next face, exit
-                                        if ( //mask[n + k + h * chunkSize[u]] != emptyBlock &&
-                                            mask[n + k + h * chunkSize[u]].Equals(mask[n])) continue;
+                                        if (mask[n + k + h * chunkSize[u]].Equals(mask[n])) continue;
                                         done = true;
                                         break;
                                     }
@@ -192,10 +207,7 @@ namespace Minecraft
                                     new Vector3(q.x, q.y, q.z),
                                     mask[n],
                                     side,
-                                    vertexData,
-                                    normalData,
-                                    uvData,
-                                    indexData
+                                    ref meshData
                                 );
 
                                 // Clear this part of the mask, so we don't add duplicate faces
@@ -221,22 +233,37 @@ namespace Minecraft
                 }
             }
 
-            /* I don't like how this needs to be done twice; the mesh will still work with the estimated size,
-             however it'll use more memory. Maybe dynamically resize the arrays when needed or use a NativeList
-             like before to be copied to the mesh's vertex data?
-             */
+            NativeArray<VertexAttributeDescriptor> attributes = new(3, Allocator.Temp, 
+                NativeArrayOptions.UninitializedMemory);
+            attributes[0] = new VertexAttributeDescriptor(VertexAttribute.Position);
+            attributes[1] = new VertexAttributeDescriptor(VertexAttribute.Normal, stream: 1);
+            attributes[2] = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, dimension: 3, stream: 2);
+            
             mesh.SetVertexBufferParams(_vertexCount, attributes);
             mesh.SetIndexBufferParams(_indexCount, IndexFormat.UInt16);
             mesh.subMeshCount = 1;
+            
+            mesh.GetVertexData<float3>().CopyFrom(meshData.vertexData.AsArray());
+            mesh.GetVertexData<float3>(1).CopyFrom(meshData.normalData.AsArray());
+            mesh.GetVertexData<float3>(2).CopyFrom(meshData.uvData.AsArray());
+            mesh.GetIndexData<ushort>().CopyFrom(meshData.indexData.AsArray());
 
-            //var f32ChunkSize = math.asfloat(chunkSize);
+            var f32ChunkSize = math.float3(chunkSize);
+            var offset = new float3(1f, 1f, 1f) * 0.5f;
             var descriptor = new SubMeshDescriptor(0, _indexCount)
             {
-                //bounds = new Bounds(0.5f * blockSize * f32ChunkSize, f32ChunkSize * blockSize),
+                bounds = new Bounds(0.5f * blockSize * f32ChunkSize - offset, f32ChunkSize * blockSize),
             };
+            //Debug.Log($"{descriptor.bounds.center.x}, {descriptor.bounds.center.y}, {descriptor.bounds.center.z}");
 
-            mesh.SetSubMesh(0, descriptor);
+            mesh.SetSubMesh(0, descriptor, MeshUpdateFlags.DontRecalculateBounds);
             attributes.Dispose();
+            meshData.Dispose();
+        }
+
+        public void Dispose()
+        {
+            voxels.Dispose();
         }
 
         private void CreateQuad(
@@ -249,39 +276,42 @@ namespace Minecraft
             float3 axisMask,
             ulong mask,
             int side,
-            NativeArray<float3> vertexData,
-            NativeArray<float3> normalData,
-            NativeArray<float3> uvData,
-            NativeArray<ushort> indexData
+            ref MeshData data
         )
         {
             int maskNormal = (int)(mask >> 32 & 0x3UL) - 1;
-            indexData[_indexCount + 0] = (ushort)(_vertexCount + 0);
-            indexData[_indexCount + 1] = (ushort)(_vertexCount + 2 + maskNormal);
-            indexData[_indexCount + 2] = (ushort)(_vertexCount + 2 - maskNormal);
-            indexData[_indexCount + 3] = (ushort)(_vertexCount + 3);
-            indexData[_indexCount + 4] = (ushort)(_vertexCount + 1 - maskNormal);
-            indexData[_indexCount + 5] = (ushort)(_vertexCount + 1 + maskNormal);
+            int baseIndex = _vertexCount;
 
-            vertexData[_vertexCount + 0] = bottomLeft;
-            vertexData[_vertexCount + 1] = bottomRight;
-            vertexData[_vertexCount + 2] = topLeft;
-            vertexData[_vertexCount + 3] = topRight;
+            // Add vertices
+            data.vertexData.Add(bottomLeft);
+            data.vertexData.Add(bottomRight);
+            data.vertexData.Add(topLeft);
+            data.vertexData.Add(topRight);
 
+            // Add normals
             float3 normal = axisMask * maskNormal;
-            normalData[_vertexCount + 0] = normal;
-            normalData[_vertexCount + 1] = normal;
-            normalData[_vertexCount + 2] = normal;
-            normalData[_vertexCount + 3] = normal;
+            data.normalData.Add(normal);
+            data.normalData.Add(normal);
+            data.normalData.Add(normal);
+            data.normalData.Add(normal);
 
-            AddUVForSide(height, width, side, normal, (VoxelType)(mask & 0xFFFFFFFFUL), uvData);
+            // Add UVs
+            AddUVForSide(height, width, side, normal, (VoxelType)(mask & 0xFFFFFFFFUL), ref data);
+
+            // Add indices
+            data.indexData.Add((ushort)(baseIndex + 0));
+            data.indexData.Add((ushort)(baseIndex + 2 + maskNormal));
+            data.indexData.Add((ushort)(baseIndex + 2 - maskNormal));
+            data.indexData.Add((ushort)(baseIndex + 3));
+            data.indexData.Add((ushort)(baseIndex + 1 - maskNormal));
+            data.indexData.Add((ushort)(baseIndex + 1 + maskNormal));
 
             _vertexCount += 4;
             _indexCount += 6;
         }
 
         private void AddUVForSide(float width, float height, int side, float3 normal, VoxelType block,
-            NativeArray<float3> uvData)
+            ref MeshData data)
         {
             // TODO: Softcode this
             int w = 0;
@@ -315,17 +345,17 @@ namespace Minecraft
 
             if (normal.x != 0)
             {
-                uvData[_vertexCount + 0] = new float3(0, 0, w);
-                uvData[_vertexCount + 1] = new float3(width, 0, w);
-                uvData[_vertexCount + 2] = new float3(0, height, w);
-                uvData[_vertexCount + 3] = new float3(width, height, w);
+                data.uvData.Add(new float3(0, 0, w));
+                data.uvData.Add(new float3(width, 0, w));
+                data.uvData.Add(new float3(0, height, w));
+                data.uvData.Add(new float3(width, height, w));
             }
             else
             {
-                uvData[_vertexCount + 0] = new float3(0, 0, w);
-                uvData[_vertexCount + 1] = new float3(0, width, w);
-                uvData[_vertexCount + 2] = new float3(height, 0, w);
-                uvData[_vertexCount + 3] = new float3(height, width, w);
+                data.uvData.Add(new float3(0, 0, w));
+                data.uvData.Add(new float3(0, width, w));
+                data.uvData.Add(new float3(height, 0, w));
+                data.uvData.Add(new float3(height, width, w));
             }
         }
     }

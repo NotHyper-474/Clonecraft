@@ -38,7 +38,7 @@ public class FPSCamera : MonoBehaviour
 		transform.localRotation = Quaternion.Euler(new Vector3(eulerRot.x, 0f));
 		transform.parent.localRotation = Quaternion.Euler(new Vector3(0f,eulerRot.y));
 
-		if (Input.GetButtonDown("Cancel"))
+		if (_cancelAction.WasPressedThisFrame())
 		{
 			m_LockMouse = !m_LockMouse;
 			Screen.lockCursor = m_LockMouse;

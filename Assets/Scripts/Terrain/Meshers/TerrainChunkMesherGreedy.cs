@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -9,38 +10,57 @@ namespace Minecraft
     [CreateAssetMenu(menuName = "Clonecraft/Meshers/Greedy", fileName = "Greedy Mesher")]
     public sealed class TerrainChunkMesherGreedy : TerrainChunkMesherBase
     {
-        [SerializeField] private bool showTimings = true;
+        public struct TerrainGreedyJobData : ITerrainJobData
+        {
+            public JobHandle Handle { get; set; }
+            public ITerrainMesherJob Job { get; set; }
+            
+            public TerrainChunk chunk;
+            public Mesh chunkMesh;
+            public Mesh.MeshDataArray meshArray;
+        }
         
-        private TerrainChunkMesherGreedyJob _job;
-
-        public override void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors = null)
+        public override ITerrainJobData GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors)
         {
             var mesh = chunk.ChunkMesh;
             if (!mesh)
             {
                 mesh = new Mesh();
             }
-
-
-            var sw = StartNew();
+            
             var meshArray = Mesh.AllocateWritableMeshData(mesh);
-            _job.mesh = meshArray[0];
-            _job.chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z);
-            _job.blockSize = TerrainManager.Instance.TerrainConfig.blockSize;
-            _job.voxels = new NativeArray<TerrainBlock>(chunk.Blocks, Allocator.TempJob);
-            _job.Schedule().Complete();
-            Mesh.ApplyAndDisposeWritableMeshData(meshArray, mesh);
-            
-            // FIXME: For some reason setting bounds directly doesn't work so this is needed as a workaround, investigate
-            mesh.RecalculateBounds();
-            chunk.SetMesh(mesh, null);
+            var job = new TerrainChunkMesherGreedyJob
+            {
+                mesh = meshArray[0],
+                chunkSize = new int3(chunk.Size.x, chunk.Size.y, chunk.Size.z),
+                blockSize = TerrainManager.Instance.TerrainConfig.blockSize,
+                voxels = new NativeArray<TerrainBlock>(chunk.Blocks, Allocator.TempJob)
+            };
+            return new TerrainGreedyJobData()
+            {
+                Job = job,
+                Handle = job.ScheduleByRef(),
+                chunk = chunk,
+                chunkMesh = mesh,
+                meshArray = meshArray,
+            };
+        }
 
-            _job.voxels.Dispose();
+        public override void ApplyData(ITerrainJobData data)
+        {
+            if (data is not TerrainGreedyJobData jobData)
+                throw new ArgumentException($"Incorrect type for {nameof(data)}");
             
-            sw.Stop();
+            if (!jobData.chunkMesh)
+                throw new NullReferenceException("Job chunkMesh is null");
             
-            if (showTimings)
-                Debug.Log("Elapsed ms: " + sw.Elapsed.TotalMilliseconds);
+            Mesh.ApplyAndDisposeWritableMeshData(jobData.meshArray, jobData.chunkMesh);
+            jobData.Job.Dispose();
+            
+            jobData.chunk.SetMesh(jobData.chunkMesh, null);
+            jobData.chunkMesh.RecalculateBounds();
         }
     }
+    
+    
 }

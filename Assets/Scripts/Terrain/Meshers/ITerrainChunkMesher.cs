@@ -3,6 +3,7 @@ namespace Minecraft
 {
     public interface ITerrainChunkMesher
     {
-        void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors);
+        ITerrainJobData GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbors);
+        void ApplyData(ITerrainJobData data);
     }
 }

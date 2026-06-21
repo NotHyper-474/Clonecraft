@@ -13,7 +13,7 @@ namespace Minecraft
 		public MeshCollider meshCollider { get; protected set; }
 		public MeshRenderer meshRenderer { get; protected set; }
 		
-		public Mesh ChunkMesh;
+		public Mesh ChunkMesh { get; private set; }
 
 		[SerializeField]
 		private Vector3Int _chunkIndex;

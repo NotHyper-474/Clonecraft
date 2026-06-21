@@ -24,6 +24,7 @@ namespace Minecraft
         public TerrainChunk GetOrGenerateChunk(Vector3Int chunkIndex, Transform chunkParent)
         {
             var chunk = _chunksPool.GetChunk(chunkIndex);
+            chunk.gameObject.SetActive(true);
             if (!chunk) chunk = InstantiateAndSetup(chunkIndex, chunkParent);
             return chunk;
         }

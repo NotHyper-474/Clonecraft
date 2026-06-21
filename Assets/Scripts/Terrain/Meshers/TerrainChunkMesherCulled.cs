@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Unity.Jobs;
 using UnityEngine;
 
 namespace Minecraft
@@ -21,7 +23,7 @@ namespace Minecraft
 
 		private static Dictionary<Vector3Int, Vector3[]> _faceSideCache = new();
 
-		public override void GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbours = null)
+		public override ITerrainJobData GenerateMeshFor(TerrainChunk chunk, TerrainChunk[] neighbours)
 		{
 			foreach (var side in _sideLookup)
 			{
@@ -34,6 +36,7 @@ namespace Minecraft
 					if (!blockAtSide.HasValue && neighbours != null && neighbours.Length != 0)
 					{
 						nextIndex += chunk.Index * chunk.Size;
+						// This sucks, maybe we shouldn't have a neighbors argument at all
 						var adjChunkIdx = TerrainManager.Instance.GetChunkIndexAt(nextIndex);
 						foreach (var chk in neighbours)
 						{
@@ -49,7 +52,7 @@ namespace Minecraft
 						AddFace(chunk.Blocks[i].index, side);
 				}
 			}
-			Mesh mesh = new Mesh
+			var mesh = new Mesh
 			{
 				vertices = _vertices.ToArray(),
 				triangles = _triangles.ToArray()
@@ -61,6 +64,12 @@ namespace Minecraft
 			_vertices.Clear();
 			_triangles.Clear();
 			_uvs.Clear();
+			return null;
+		}
+
+		public override void ApplyData(ITerrainJobData data)
+		{
+			
 		}
 
 		private void AddFace(Vector3Int position, Vector3Int faceNormal)

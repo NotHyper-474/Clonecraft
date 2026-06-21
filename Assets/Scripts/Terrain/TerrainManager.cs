@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Serialization;
 using ThreadPriority = UnityEngine.ThreadPriority;
@@ -28,7 +30,6 @@ namespace Minecraft
         [SerializeField] private TerrainChunksPool chunksPool;
         [SerializeField] private TerrainConfig config;
         [SerializeField] private uint renderDistance = 12U;
-        [SerializeField] private Material defaultMaterial;
         [SerializeField] private GameObject playerPrefab;
         [Header("Misc")] [SerializeField] private Font minecraftFont;
 
@@ -44,6 +45,8 @@ namespace Minecraft
         private bool _forceUpdate;
 
         private TerrainChunkGenerator _chunkGenerator;
+
+        private readonly Queue<ITerrainJobData> _jobQueue = new();
 
         private void Awake()
         {
@@ -66,7 +69,9 @@ namespace Minecraft
             debugChunk.name = "[DEBUG] CHUNK";
             debugChunk.Setup(Vector3Int.zero, config, false);
             terrainGenerator.GenerateBlocksFor(debugChunk);
-            RegenerateChunkMesh(debugChunk);
+            var result = chunkMesher.GenerateMeshFor(debugChunk, null);
+            result.Handle.Complete();
+            chunkMesher.ApplyData(result);
 
             chunksPool.DisposeAll();
         }
@@ -83,11 +88,11 @@ namespace Minecraft
             if (!Application.isPlaying) return;
             var playerChunk = GetChunkIndexAt(_player.position);
             playerChunk.y = 0;
-                
+
             var scaledChunkSize = (Vector3)config.chunkSize * config.blockSize;
             var center = Vector3.Scale(playerChunk, scaledChunkSize) + scaledChunkSize * 0.5f;
             center -= 0.5f * Vector3.one;
-                
+
             Gizmos.DrawWireCube(center, scaledChunkSize);
         }
 
@@ -104,7 +109,7 @@ namespace Minecraft
             if (_prevRenderDistance != renderDistance && renderDistance != 0)
             {
                 chunksPool.Deactivate(_currentChunks.Where(i => i != _playerChunk));
-                _currentChunks.Clear();
+                _currentChunks.RemoveWhere(i => i != _playerChunk);
                 _forceUpdate = true;
                 _updatingTerrain = false;
                 _prevRenderDistance = renderDistance;
@@ -113,6 +118,17 @@ namespace Minecraft
             Application.backgroundLoadingPriority = chunkGeneratePriority;
             await UpdateTerrain();
             Application.backgroundLoadingPriority = ThreadPriority.Normal;
+            
+            _playerChunk = GetChunkIndexAt(_player.position);
+        }
+
+        private void LateUpdate()
+        {
+            while (_jobQueue.TryDequeue(out var data))
+            {
+                data.Handle.Complete();
+                chunkMesher.ApplyData(data);
+            }
         }
 
         private async Task UpdateTerrain()
@@ -133,7 +149,6 @@ namespace Minecraft
                 {
                     _currentChunks.Clear();
                     _currentChunks.UnionWith(newCurrentChunks);
-                    _playerChunk = newPlayerChunk;
                     _updatingTerrain = false;
                     _forceUpdate = false;
                 });
@@ -142,7 +157,7 @@ namespace Minecraft
 
         private IEnumerable<Vector3Int> ChunksAroundChunk(Vector3Int chunkIndex)
         {
-            for (int i = 1; i <= (int)renderDistance; i++)
+            for (int i = 1; i <= Mathf.FloorToInt(renderDistance * 0.5f); i++)
             {
                 for (int x = chunkIndex.x - i; x <= chunkIndex.x + i; x++)
                 {
@@ -188,7 +203,7 @@ namespace Minecraft
                     neighbours[i] = neighbour;
                 }
 
-                chunkMesher.GenerateMeshFor(chunkToMesh, neighbours);
+                RegenerateChunkMesh(chunkToMesh, neighbours);
                 await Task.Yield();
             }
         }
@@ -215,8 +230,7 @@ namespace Minecraft
             {
                 block = GetBlockAt(pointOnTerrain.Value, out TerrainChunk chunk);
 
-                SetBlockTypeAt(chunk, block.Value.index, blockType);
-                RegenerateChunkMesh(chunk);
+                SetBlockTypeAt(chunk, block.Value.index, blockType, true);
             }
 
             return block;
@@ -226,12 +240,10 @@ namespace Minecraft
         {
             TerrainBlock? block = null;
             var pointOnTerrain = RaycastTerrainMesh(ray, rayOffset)?.Point;
-
             if (!pointOnTerrain.HasValue) return null;
             block = GetBlockAt(pointOnTerrain.Value, out TerrainChunk chunk);
 
-            SetBlockTypeAt(chunk, block.Value.index, VoxelType.Air);
-            RegenerateChunkMesh(chunk);
+            SetBlockTypeAt(chunk, block.Value.index, VoxelType.Air, true);
 
             return block;
         }
@@ -280,6 +292,7 @@ namespace Minecraft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RegenerateChunkMesh(TerrainChunk chunk) => chunkMesher.GenerateMeshFor(chunk);
+        public void RegenerateChunkMesh(TerrainChunk chunk, TerrainChunk[] neighbors = null) =>
+            _jobQueue.Enqueue(chunkMesher.GenerateMeshFor(chunk, null));
     }
 }
