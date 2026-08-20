@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Unity.Jobs;
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
 	[CreateAssetMenu(menuName = "Clonecraft/Meshers/Culled", fileName = "Culled Mesher")]
 	public sealed class TerrainChunkMesherCulled : TerrainChunkMesherBase

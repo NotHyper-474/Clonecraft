@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
     public class TerrainConfig : MonoBehaviour
     {

@@ -1,6 +1,6 @@
 using Unity.Jobs;
 
-namespace Minecraft
+namespace Clonecraft
 {
     /// <summary>
     /// Generic interface for type-safe job data with specific job type.

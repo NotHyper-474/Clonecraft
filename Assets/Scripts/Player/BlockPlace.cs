@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Minecraft
+namespace Clonecraft.Player
 {
     public sealed class BlockPlace : MonoBehaviour
     {
@@ -48,7 +48,7 @@ namespace Minecraft
             _blockFace = null;
 
             Ray cRay = new Ray(transform.position, transform.forward);
-            var pointOnTerrain = TerrainManager.Instance.RaycastTerrainMesh(cRay, TerrainManager.Instance.RayOffset);
+            var pointOnTerrain = TerrainManager.RaycastTerrainMesh(cRay, TerrainManager.Instance.RayOffset);
             if (pointOnTerrain == null) return;
 
             var block = TerrainManager.Instance.GetBlockAt(pointOnTerrain.Point);
@@ -74,7 +74,7 @@ namespace Minecraft
                 
                 if (Mouse.current.middleButton.wasPressedThisFrame || Keyboard.current.digit3Key.wasPressedThisFrame)
                 {
-                    Physics.Raycast(cRay, out RaycastHit hit);
+                    Physics.Raycast(cRay, out var hit);
                     Instantiate(dynamitePrefab, hit.point, Quaternion.identity);
                 }
             }
@@ -100,10 +100,8 @@ namespace Minecraft
         private static IEnumerable<Vector3> GetFaceVertices(BlockFace face)
         {
             GetFaceAxis(face, out Vector3 right, out Vector3 up);
-
             var center = face.Center;
-
-            return new Vector3[]
+            return new[]
             {
                 center - right - up,
                 center - right + up,

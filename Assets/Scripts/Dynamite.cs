@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
 	public class Dynamite : MonoBehaviour
 	{

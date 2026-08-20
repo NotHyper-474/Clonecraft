@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
 	public sealed class PointOnTerrainMesh
 	{

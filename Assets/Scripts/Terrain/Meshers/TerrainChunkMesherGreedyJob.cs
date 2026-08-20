@@ -6,7 +6,7 @@ using Unity.Jobs;
 using System.Runtime.CompilerServices;
 using UnityEngine.Rendering;
 
-namespace Minecraft
+namespace Clonecraft
 {
     internal struct MeshData
     {

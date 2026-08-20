@@ -1,34 +1,31 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
     public class TerrainChunksPool : MonoBehaviour
     {
         [SerializeField] private TerrainChunk chunkPrefab;
 
-        private readonly Dictionary<Vector3Int, TerrainChunk> currentChunks = new();
-        private readonly Queue<TerrainChunk> deactivatedChunks = new();
-        
+        private readonly Dictionary<Vector3Int, TerrainChunk> _currentChunks = new();
+        private readonly Queue<TerrainChunk> _deactivatedChunks = new();
+
         public TerrainChunk Instantiate(Vector3Int chunkIndex, Transform parent, bool reactivate = true)
         {
-            TerrainChunk newChunk;
-
-            if (deactivatedChunks.Count == 0)
+            if (_deactivatedChunks.TryDequeue(out var newChunk))
             {
-                newChunk = Instantiate(chunkPrefab, parent);
-            }
-            else
-            {
-                newChunk = deactivatedChunks.Dequeue();
                 if (reactivate)
                     newChunk.gameObject.SetActive(true);
             }
+            else
+            {
+                newChunk = Instantiate(chunkPrefab, parent);
+            }
             
-            currentChunks[chunkIndex] = newChunk;
+            _currentChunks[chunkIndex] = newChunk;
 
-            Debug.Log("Chunk Count: " + currentChunks.Count);
-            Debug.Log("Deactivated Chunk Count: " + deactivatedChunks.Count);
+            //Debug.Log("Chunk Count: " + _currentChunks.Count);
+            //Debug.Log("Deactivated Chunk Count: " + _deactivatedChunks.Count);
 
             return newChunk;
         }
@@ -40,34 +37,44 @@ namespace Minecraft
                 var chunk = GetChunk(chunkIndex);
                 if (!chunk) continue;
                 chunk.gameObject.SetActive(false);
-                //chunk.meshRenderer.enabled = false;
-                deactivatedChunks.Enqueue(chunk);
-                //currentChunks.Remove(chunkIndex);
+                _deactivatedChunks.Enqueue(chunk);
+                _currentChunks.Remove(chunk.Index);
             }
         }
 
         public void DisposeAll(Vector3Int? exceptIndex = null)
         {
-            foreach (var (key, chunk) in currentChunks)
+            TerrainChunk exceptChunk = null;
+            foreach (var (key, chunk) in _currentChunks)
             {
-                if (key == exceptIndex) continue;
-                if (!chunk) continue;
-                Destroy(chunk.gameObject);
+                if (key == exceptIndex)
+                {
+                    exceptChunk = chunk;
+                    continue;
+                }
+                if (chunk)
+                    Destroy(chunk.gameObject);
+            }
+            
+            _currentChunks.Clear();
+            if (exceptChunk)
+            {
+                _currentChunks[exceptIndex.Value] = exceptChunk;
             }
 
-            for (var i = 0; i < deactivatedChunks.Count; i++)
+            while (_deactivatedChunks.TryPeek(out var chunk))
             {
-                var chunk = deactivatedChunks.Dequeue();
-                if (chunk.Index == exceptIndex) continue;
-                Destroy(chunk.gameObject);
-            }
+                if (chunk.Index == exceptIndex)
+                    continue;
 
-            currentChunks.Clear();
+                Destroy(chunk.gameObject);
+                _deactivatedChunks.Dequeue();
+            }
         }
 
         public TerrainChunk GetChunk(Vector3Int chunkIndex)
         {
-            return currentChunks.GetValueOrDefault(chunkIndex, null);
+            return _currentChunks.GetValueOrDefault(chunkIndex, null);
         }
     }
 }

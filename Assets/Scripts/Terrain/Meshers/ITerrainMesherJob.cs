@@ -1,6 +1,6 @@
 using Unity.Jobs;
 
-namespace Minecraft
+namespace Clonecraft
 {
     public interface ITerrainMesherJob : IJob
     {

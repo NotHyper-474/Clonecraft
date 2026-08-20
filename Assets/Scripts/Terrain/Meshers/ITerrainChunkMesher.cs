@@ -1,5 +1,5 @@
 
-namespace Minecraft
+namespace Clonecraft
 {
     public interface ITerrainChunkMesher
     {

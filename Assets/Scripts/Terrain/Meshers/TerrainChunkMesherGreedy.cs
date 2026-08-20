@@ -5,7 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using static System.Diagnostics.Stopwatch;
 
-namespace Minecraft
+namespace Clonecraft
 {
     [CreateAssetMenu(menuName = "Clonecraft/Meshers/Greedy", fileName = "Greedy Mesher")]
     public sealed class TerrainChunkMesherGreedy : TerrainChunkMesherBase
@@ -57,6 +57,7 @@ namespace Minecraft
             Mesh.ApplyAndDisposeWritableMeshData(jobData.meshArray, jobData.chunkMesh);
             jobData.Job.Dispose();
             
+            jobData.chunk.gameObject.SetActive(true);
             jobData.chunk.SetMesh(jobData.chunkMesh, null);
             jobData.chunkMesh.RecalculateBounds();
         }

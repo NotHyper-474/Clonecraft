@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
     [CreateAssetMenu(menuName = "Clonecraft/Generators/Heightmap")]
     public class TerrainHeightmapGenerator : TerrainGeneratorBase

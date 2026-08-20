@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
     public sealed class TerrainChunkGenerator
     {
@@ -16,7 +16,7 @@ namespace Minecraft
 
         public TerrainChunk InstantiateAndSetup(Vector3Int index, Transform chunkParent)
         {
-            var newChunk = _chunksPool.Instantiate(index, chunkParent);
+            var newChunk = _chunksPool.Instantiate(index, chunkParent, false);
             newChunk.Setup(index, _config, false);
             return newChunk;
         }
@@ -24,9 +24,13 @@ namespace Minecraft
         public TerrainChunk GetOrGenerateChunk(Vector3Int chunkIndex, Transform chunkParent)
         {
             var chunk = _chunksPool.GetChunk(chunkIndex);
-            chunk.gameObject.SetActive(true);
             if (!chunk) chunk = InstantiateAndSetup(chunkIndex, chunkParent);
             return chunk;
+        }
+
+        public bool DoesChunkExist(Vector3Int chunkIndex)
+        {
+            return _chunksPool.GetChunk(chunkIndex);
         }
     }
 }

@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Minecraft
+namespace Clonecraft
 {
 	public enum VoxelType : byte
 	{

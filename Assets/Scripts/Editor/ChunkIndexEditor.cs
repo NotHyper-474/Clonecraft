@@ -1,10 +1,9 @@
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-using Minecraft;
+using Clonecraft;
 
-[CustomEditor(typeof(Minecraft.TerrainChunk))]
+[CustomEditor(typeof(TerrainChunk))]
 public class ChunkIndexEditor : Editor
 {
     private VisualElement _rootElement;

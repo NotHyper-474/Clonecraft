@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using ThreadPriority = UnityEngine.ThreadPriority;
 
-namespace Minecraft
+namespace Clonecraft
 {
     public class TerrainManager : MonoBehaviour
     {
@@ -37,12 +37,11 @@ namespace Minecraft
          SerializeField]
         private float rayOffset = 0.01f;
 
-        private Transform _player;
         private uint _prevRenderDistance;
+        private Transform _player;
         private Vector3Int _playerChunk = Vector3Int.one * int.MinValue;
         private readonly HashSet<Vector3Int> _currentChunks = new();
         private bool _updatingTerrain;
-        private bool _forceUpdate;
 
         private TerrainChunkGenerator _chunkGenerator;
 
@@ -52,35 +51,29 @@ namespace Minecraft
         {
             Instance = this;
 
-            if (!int.TryParse(seed, out int numSeed))
+            if (!int.TryParse(seed, out var numSeed))
                 numSeed = seed.GetHashCode();
 
             Debug.Assert(terrainGenerator);
             terrainGenerator.SetSeed(numSeed);
 
+            _prevRenderDistance = renderDistance;
             _player = playerPrefab.transform;
             _playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
 
             _chunkGenerator = new TerrainChunkGenerator(chunksPool, config);
-
-            // Sometimes there's an error but no exception thrown due to how Unity and Tasks work
-            // This chunk allows us to see these errors
-            TerrainChunk debugChunk = chunksPool.Instantiate(Vector3Int.zero, transform);
-            debugChunk.name = "[DEBUG] CHUNK";
-            debugChunk.Setup(Vector3Int.zero, config, false);
-            terrainGenerator.GenerateBlocksFor(debugChunk);
-            var result = chunkMesher.GenerateMeshFor(debugChunk, null);
-            result.Handle.Complete();
-            chunkMesher.ApplyData(result);
-
-            chunksPool.DisposeAll();
         }
 
-        // Start is called before the first frame update
         private async void Start()
         {
-            _forceUpdate = true;
-            await UpdateTerrain().ContinueWith(_ => Debug.Log("First load finished"));
+            try
+            {
+                await UpdateTerrain().ContinueWith(_ => Debug.Log("First load finished"));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
 
         private void OnDrawGizmos()
@@ -106,20 +99,24 @@ namespace Minecraft
 
         private async void Update()
         {
-            if (_prevRenderDistance != renderDistance && renderDistance != 0)
+            try
             {
-                chunksPool.Deactivate(_currentChunks.Where(i => i != _playerChunk));
-                _currentChunks.RemoveWhere(i => i != _playerChunk);
-                _forceUpdate = true;
-                _updatingTerrain = false;
-                _prevRenderDistance = renderDistance;
-            }
+                if (_prevRenderDistance != renderDistance && renderDistance != 0)
+                {
+                    chunksPool.DisposeAll(_playerChunk);
+                    _currentChunks.RemoveWhere(i => i != _playerChunk);
+                    _updatingTerrain = false;
+                    _prevRenderDistance = renderDistance;
+                }
 
-            Application.backgroundLoadingPriority = chunkGeneratePriority;
-            await UpdateTerrain();
-            Application.backgroundLoadingPriority = ThreadPriority.Normal;
-            
-            _playerChunk = GetChunkIndexAt(_player.position);
+                Application.backgroundLoadingPriority = chunkGeneratePriority;
+                await UpdateTerrain();
+                Application.backgroundLoadingPriority = ThreadPriority.Normal;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
 
         private void LateUpdate()
@@ -136,9 +133,12 @@ namespace Minecraft
             if (_updatingTerrain) return;
             var newPlayerChunk = GetChunkIndexAt(_player.position);
 
-            if (_forceUpdate || _playerChunk != newPlayerChunk)
+            if (_playerChunk != newPlayerChunk)
             {
-                var newCurrentChunks = ChunksAroundChunk(_playerChunk);
+                _playerChunk = newPlayerChunk;
+                
+                var newCurrentChunksIter = ChunksAroundChunk(_playerChunk);
+                var newCurrentChunks = newCurrentChunksIter as Vector3Int[] ?? newCurrentChunksIter.ToArray();
                 var chunksToDestroy = _currentChunks.Except(newCurrentChunks);
                 var chunksToCreate = newCurrentChunks.Except(_currentChunks);
                 chunksPool.Deactivate(chunksToDestroy);
@@ -150,18 +150,17 @@ namespace Minecraft
                     _currentChunks.Clear();
                     _currentChunks.UnionWith(newCurrentChunks);
                     _updatingTerrain = false;
-                    _forceUpdate = false;
                 });
             }
         }
 
         private IEnumerable<Vector3Int> ChunksAroundChunk(Vector3Int chunkIndex)
         {
-            for (int i = 1; i <= Mathf.FloorToInt(renderDistance * 0.5f); i++)
+            for (int i = 0; i <= renderDistance / 2; i++)
             {
-                for (int x = chunkIndex.x - i; x <= chunkIndex.x + i; x++)
+                for (int x = chunkIndex.x - i + 1; x <= chunkIndex.x + i; x++)
                 {
-                    for (int z = chunkIndex.z - i; z <= chunkIndex.z + i; z++)
+                    for (int z = chunkIndex.z - i + 1; z <= chunkIndex.z + i; z++)
                     {
                         yield return new Vector3Int(x, 0, z);
                     }
@@ -171,52 +170,23 @@ namespace Minecraft
 
         private async Task GenerateChunks(IEnumerable<Vector3Int> chunksToCreate)
         {
-            Queue<TerrainChunk> chunks = new(chunksToCreate.Count());
             foreach (var chunkIndex in chunksToCreate)
             {
-                var newChunk = _chunkGenerator.InstantiateAndSetup(chunkIndex, transform);
+                if (_chunkGenerator.DoesChunkExist(chunkIndex)) continue;
+                
+                var newChunk = _chunkGenerator.GetOrGenerateChunk(chunkIndex, transform);
                 terrainGenerator.GenerateBlocksFor(newChunk);
-                chunks.Enqueue(newChunk);
-                await Task.Yield();
-            }
-
-            await MeshChunks(chunks);
-        }
-
-        private async Task MeshChunks(Queue<TerrainChunk> chunksToMesh)
-        {
-            var dirsToCheck = new[]
-            {
-                Vector3Int.left,
-                Vector3Int.right,
-                Vector3Int.forward,
-                Vector3Int.back
-            };
-
-            while (chunksToMesh.Count > 0)
-            {
-                var chunkToMesh = chunksToMesh.Dequeue();
-                var neighbours = new TerrainChunk[dirsToCheck.Length];
-                for (var i = 0; i < dirsToCheck.Length; i++)
-                {
-                    var neighbour = _chunkGenerator.GetOrGenerateChunk(chunkToMesh.Index + dirsToCheck[i], transform);
-                    neighbours[i] = neighbour;
-                }
-
-                RegenerateChunkMesh(chunkToMesh, neighbours);
+                RegenerateChunkMesh(newChunk);
                 await Task.Yield();
             }
         }
 
-        public PointOnTerrainMesh RaycastTerrainMesh(Ray ray, float offset, float maxDistance = 5f)
+        public static PointOnTerrainMesh RaycastTerrainMesh(Ray ray, float offset, float maxDistance = 5f)
         {
-            PointOnTerrainMesh result = null;
+            if (!Physics.Raycast(ray, out var hit, maxDistance)) return null;
 
-            if (Physics.Raycast(ray, out RaycastHit hit, maxDistance))
-            {
-                var point = hit.point + ray.direction * offset;
-                result = new PointOnTerrainMesh(point, hit.normal, ray);
-            }
+            var point = hit.point + ray.direction * offset;
+            var result = new PointOnTerrainMesh(point, hit.normal, ray);
 
             return result;
         }
@@ -228,7 +198,7 @@ namespace Minecraft
 
             if (pointOnTerrain.HasValue)
             {
-                block = GetBlockAt(pointOnTerrain.Value, out TerrainChunk chunk);
+                block = GetBlockAt(pointOnTerrain.Value, out var chunk);
 
                 SetBlockTypeAt(chunk, block.Value.index, blockType, true);
             }
@@ -241,7 +211,7 @@ namespace Minecraft
             TerrainBlock? block = null;
             var pointOnTerrain = RaycastTerrainMesh(ray, rayOffset)?.Point;
             if (!pointOnTerrain.HasValue) return null;
-            block = GetBlockAt(pointOnTerrain.Value, out TerrainChunk chunk);
+            block = GetBlockAt(pointOnTerrain.Value, out var chunk);
 
             SetBlockTypeAt(chunk, block.Value.index, VoxelType.Air, true);
 
@@ -257,12 +227,11 @@ namespace Minecraft
 
             var blockIndex = Vector3Int.FloorToInt(worldPoint - chunk.Index * chunk.Size + 0.5f * Vector3.one);
             var block = chunk.GetBlock(blockIndex);
-            if (!block.HasValue)
-            {
-                var neighbourIndex = MathUtils.GetNextChunkIndex(blockIndex, chunkIndex, config.chunkSize);
-                blockIndex = MathUtils.WrapIndex(blockIndex, chunk.Size);
-                chunk = chunksPool.GetChunk(neighbourIndex);
-            }
+            if (block.HasValue) return chunk.GetBlock(blockIndex).GetValueOrDefault();
+            
+            var neighbourIndex = MathUtils.GetNextChunkIndex(blockIndex, chunkIndex, config.chunkSize);
+            blockIndex = MathUtils.WrapIndex(blockIndex, chunk.Size);
+            chunk = chunksPool.GetChunk(neighbourIndex);
 
             return chunk.GetBlock(blockIndex).GetValueOrDefault();
         }
