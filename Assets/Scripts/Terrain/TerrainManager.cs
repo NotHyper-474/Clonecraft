@@ -59,7 +59,7 @@ namespace Clonecraft
 
             _prevRenderDistance = renderDistance;
             _player = playerPrefab.transform;
-            _playerChunk = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
+            _playerChunk = Vector3Int.one * int.MinValue;
 
             _chunkGenerator = new TerrainChunkGenerator(chunksPool, config);
         }
@@ -228,7 +228,7 @@ namespace Clonecraft
             var blockIndex = Vector3Int.FloorToInt(worldPoint - chunk.Index * chunk.Size + 0.5f * Vector3.one);
             var block = chunk.GetBlock(blockIndex);
             if (block.HasValue) return chunk.GetBlock(blockIndex).GetValueOrDefault();
-            
+
             var neighbourIndex = MathUtils.GetNextChunkIndex(blockIndex, chunkIndex, config.chunkSize);
             blockIndex = MathUtils.WrapIndex(blockIndex, chunk.Size);
             chunk = chunksPool.GetChunk(neighbourIndex);

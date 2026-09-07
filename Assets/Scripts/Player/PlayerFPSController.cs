@@ -1,4 +1,3 @@
-using Clonecraft;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,22 +9,24 @@ namespace Clonecraft.Player
         [SerializeField] private float walkSpeed = 6f;
         [SerializeField] private float runSpeed = 9f;
         [SerializeField] private float jumpSpeed = 10f;
-        [SerializeField] private float gravityMultiplier = 10f;
+        [SerializeField] private float gravityMultiplier = 1f;
+        [SerializeField] private float terminalVelocity = 50f;
+        [SerializeField] private float jumpGraceTime = 0.1f;
 
         public CharacterController Controller { get; private set; }
 
-        private Vector2 input;
-        private bool isGrounded;
-        private bool jump;
-        private float jumpCooldown;
-        private float verticalVelocity;
-        private bool toChunk;
+        private Vector2 _input;
+        private bool _jumpRequested;
+        private float _jumpCooldown;
+        private float _jumpGraceTimer;
+        private Vector3 _gravitalVelocity;
+        private bool _wasGrounded;
+        private bool _toChunk;
 
         private InputAction _moveAction;
         private InputAction _jumpAction;
         private InputAction _sprintAction;
 
-        // Start is called before the first frame update
         private void Start()
         {
             Controller = GetComponent<CharacterController>();
@@ -36,74 +37,94 @@ namespace Clonecraft.Player
 
         private void LateUpdate()
         {
-            if (toChunk) return;
+            if (_toChunk) return;
             if (Physics.Raycast(transform.position, Vector3.down, out var hit))
             {
-                // Controller doesn't like it when we set the position directly
                 Controller.enabled = false;
                 transform.position = hit.point + Vector3.up;
-                Controller.enabled = toChunk = true;
+                Controller.enabled = _toChunk = true;
             }
         }
 
         private void Update()
         {
             var spd = _sprintAction.IsPressed() ? runSpeed : walkSpeed;
-            input = _moveAction.ReadValue<Vector2>() * spd;
-            if (_jumpAction.WasPressedThisFrame()) jump = true;
+            _input = _moveAction.ReadValue<Vector2>() * spd;
+            if (_jumpAction.WasPressedThisFrame()) _jumpRequested = true;
         }
 
         private void FixedUpdate()
         {
-            if (!toChunk) return;
-            var moveAxis = transform.right * input.x + transform.forward * input.y;
-
-            // apply gravity always, to let us track down ramps properly
-            isGrounded = Controller.isGrounded;
-            if (isGrounded)
-                verticalVelocity = -1f;
-
-            // NOTE: deltaTime in FixedUpdate is perfectly fine as Unity takes care of that for us
-            jumpCooldown -= Time.deltaTime;
-
-            verticalVelocity += Physics.gravity.y * gravityMultiplier * Time.deltaTime;
+            if (!_toChunk) return;
+            var moveAxis = transform.right * _input.x + transform.forward * _input.y;
 
             // allow jump as long as the player is on the ground
-            if (jump && isGrounded)
+            if (Controller.isGrounded)
             {
-                // Physics dynamics formula for calculating jump up velocity based on height and gravity
-                verticalVelocity += Mathf.Sqrt(jumpSpeed * 2f * -Physics.gravity.y);
-                verticalVelocity = Mathf.Min(verticalVelocity, 100f);
-                jump = false;
-            }
-            
-            // inject Y velocity before we use it
-            moveAxis.y = verticalVelocity;
+                // Keep adding a tiny force to force the controller to slide down slopes
+                _gravitalVelocity = Physics.gravity.normalized;
 
-            // Auto jump
-            if (input.y > 0f && jumpCooldown <= 0f)
-            {
-                Ray blockCheck =
-                    new Ray(
-                        new Vector3(transform.position.x - 0.5f, transform.position.y + 0.01f,
-                            transform.position.z + 0.1f),
-                        transform.forward);
-                var point = TerrainManager.RaycastTerrainMesh(blockCheck, 0.1f, 1f)?.Point;
-
-                if (point.HasValue)
+                if (!_wasGrounded)
                 {
-                    var hasBlockOnTop = !TerrainManager.Instance
-                        .GetBlockAt(point.Value + 0.5f * TerrainManager.Instance.TerrainConfig.blockSize * Vector3.up)
-                        .IsEmpty();
-                    if (!hasBlockOnTop)
+                    _jumpGraceTimer = jumpGraceTime;
+                }
+
+                // Auto jump
+                if (!_jumpRequested && _input.y > 0f && _jumpCooldown <= 0f)
+                {
+                    Ray blockCheck =
+                        new Ray(
+                            new Vector3(transform.position.x, transform.position.y + 0.01f,
+                                transform.position.z + 0.1f),
+                            transform.forward);
+                    var point = TerrainManager.RaycastTerrainMesh(blockCheck, 0.1f, 1f)?.Point;
+
+                    if (point.HasValue)
                     {
-                        jumpCooldown = 0.5f;
-                        jump = true;
+                        var hasBlockOnTop = !TerrainManager.Instance
+                            .GetBlockAt(point.Value +
+                                        0.5f * TerrainManager.Instance.TerrainConfig.blockSize * Vector3.up)
+                            .IsEmpty();
+                        if (!hasBlockOnTop)
+                        {
+                            _jumpCooldown = 0.5f;
+                            _jumpRequested = true;
+                        }
                     }
                 }
             }
+            else
+            {
+                _gravitalVelocity += Physics.gravity * (gravityMultiplier * Time.fixedDeltaTime);
+                _gravitalVelocity = Vector3.Max(Vector3.one * -terminalVelocity, _gravitalVelocity);
 
-            Controller.Move(moveAxis * Time.deltaTime);
+                _jumpGraceTimer -= Time.deltaTime;
+                if (_jumpRequested && _jumpGraceTimer <= 0f)
+                {
+                    _jumpRequested = false;
+                }
+            }
+
+            if (_jumpRequested && (_wasGrounded || _jumpGraceTimer > 0f))
+            {
+                var jumpForce = transform.up * Mathf.Sqrt(jumpSpeed * 2f * -Physics.gravity.y);
+                _gravitalVelocity = jumpForce;
+                _jumpRequested = false;
+                _jumpGraceTimer = 0f;
+            }
+
+            _wasGrounded = Controller.isGrounded;
+
+            if (_jumpCooldown > 0f)
+            {
+                // NOTE: deltaTime in FixedUpdate is perfectly fine as Unity takes care of that for us
+                _jumpCooldown -= Time.deltaTime;
+            }
+
+            moveAxis += _gravitalVelocity;
+            _jumpRequested = false;
+
+            Controller.Move(moveAxis * Time.fixedDeltaTime);
         }
     }
 }
