@@ -9,5 +9,6 @@ namespace Clonecraft
     {
         ITerrainMesherJob Job { get; set; }
         JobHandle Handle { get; set; }
+        TerrainChunk Chunk { get; set; }
     }
 }

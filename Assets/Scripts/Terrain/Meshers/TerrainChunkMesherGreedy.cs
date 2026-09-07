@@ -14,8 +14,8 @@ namespace Clonecraft
         {
             public JobHandle Handle { get; set; }
             public ITerrainMesherJob Job { get; set; }
+            public TerrainChunk Chunk { get; set; }
             
-            public TerrainChunk chunk;
             public Mesh chunkMesh;
             public Mesh.MeshDataArray meshArray;
         }
@@ -40,7 +40,7 @@ namespace Clonecraft
             {
                 Job = job,
                 Handle = job.ScheduleByRef(),
-                chunk = chunk,
+                Chunk = chunk,
                 chunkMesh = mesh,
                 meshArray = meshArray,
             };
@@ -55,10 +55,8 @@ namespace Clonecraft
                 throw new NullReferenceException("Job chunkMesh is null");
             
             Mesh.ApplyAndDisposeWritableMeshData(jobData.meshArray, jobData.chunkMesh);
-            jobData.Job.Dispose();
             
-            jobData.chunk.gameObject.SetActive(true);
-            jobData.chunk.SetMesh(jobData.chunkMesh, null);
+            jobData.Chunk.SetMesh(jobData.chunkMesh, null);
             jobData.chunkMesh.RecalculateBounds();
         }
     }

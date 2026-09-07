@@ -5,6 +5,14 @@ using UnityEngine;
 
 namespace Clonecraft
 {
+	struct DummyData : ITerrainJobData
+	{
+		public JobHandle Handle { get; set; }
+		public ITerrainMesherJob Job { get; set; }
+
+		public TerrainChunk Chunk  { get; set; }
+	}
+	
 	[CreateAssetMenu(menuName = "Clonecraft/Meshers/Culled", fileName = "Culled Mesher")]
 	public sealed class TerrainChunkMesherCulled : TerrainChunkMesherBase
 	{
@@ -27,7 +35,7 @@ namespace Clonecraft
 		{
 			foreach (var side in _sideLookup)
 			{
-				for (int i = 0; i < chunk.Blocks.Length; i++)
+				for (var i = 0; i < chunk.Blocks.Length; i++)
 				{
 					if (chunk.Blocks[i].IsEmpty()) continue;
 
@@ -64,7 +72,12 @@ namespace Clonecraft
 			_vertices.Clear();
 			_triangles.Clear();
 			_uvs.Clear();
-			return null;
+			return new DummyData()
+			{
+				Handle = default,
+				Chunk = chunk,
+				Job = null
+			};
 		}
 
 		public override void ApplyData(ITerrainJobData data)

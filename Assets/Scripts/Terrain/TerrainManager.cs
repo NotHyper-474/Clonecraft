@@ -104,7 +104,8 @@ namespace Clonecraft
                 if (_prevRenderDistance != renderDistance && renderDistance != 0)
                 {
                     chunksPool.DisposeAll(_playerChunk);
-                    _currentChunks.RemoveWhere(i => i != _playerChunk);
+                    _currentChunks.RemoveWhere(chunk => chunk != _playerChunk);
+                    _playerChunk = Vector3Int.one * int.MinValue;
                     _updatingTerrain = false;
                     _prevRenderDistance = renderDistance;
                 }
@@ -125,6 +126,8 @@ namespace Clonecraft
             {
                 data.Handle.Complete();
                 chunkMesher.ApplyData(data);
+                data.Job?.Dispose();
+                data.Chunk.gameObject.SetActive(true);
             }
         }
 
@@ -136,8 +139,8 @@ namespace Clonecraft
             if (_playerChunk != newPlayerChunk)
             {
                 _playerChunk = newPlayerChunk;
-                
-                var newCurrentChunksIter = ChunksAroundChunk(_playerChunk);
+
+                var newCurrentChunksIter = ChunksAroundChunk(_playerChunk, (int)renderDistance);
                 var newCurrentChunks = newCurrentChunksIter as Vector3Int[] ?? newCurrentChunksIter.ToArray();
                 var chunksToDestroy = _currentChunks.Except(newCurrentChunks);
                 var chunksToCreate = newCurrentChunks.Except(_currentChunks);
@@ -154,13 +157,13 @@ namespace Clonecraft
             }
         }
 
-        private IEnumerable<Vector3Int> ChunksAroundChunk(Vector3Int chunkIndex)
+        private static IEnumerable<Vector3Int> ChunksAroundChunk(Vector3Int chunkIndex, int radius)
         {
-            for (int i = 0; i <= renderDistance / 2; i++)
+            for (var i = 0; i <= Mathf.CeilToInt(radius * 0.5f); i++)
             {
-                for (int x = chunkIndex.x - i + 1; x <= chunkIndex.x + i; x++)
+                for (var x = chunkIndex.x - i + 1; x <= chunkIndex.x + i; x++)
                 {
-                    for (int z = chunkIndex.z - i + 1; z <= chunkIndex.z + i; z++)
+                    for (var z = chunkIndex.z - i + 1; z <= chunkIndex.z + i; z++)
                     {
                         yield return new Vector3Int(x, 0, z);
                     }
